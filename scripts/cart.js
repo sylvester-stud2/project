@@ -334,9 +334,176 @@ async function checkActiveOrders(userId) {
     }
 }
 
+// Update the styles with extra small screen handling
+// Update the styles with much larger spacing for small screens
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+    
+    .modal-content {
+        position: relative;
+        background-color: #fff;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        z-index: 1001;
+    }
+    
+    /* Yoco specific styles */
+    .yoco-payment-overlay {
+        z-index: 60000 !important;
+    }
+    
+    iframe[id^='yoco-3ds-modal'] {
+        z-index: 60001 !important;
+    }
+    
+    .yoco-payment-overlay-modal {
+        z-index: 60002 !important;
+    }
+
+    /* Responsive positioning for tablets and medium-sized phones */
+    @media screen and (max-width: 768px) {
+        iframe[id^='yoco-payment-form'] {
+            margin-top: 120px !important;
+            top: 25% !important;
+            transform: translateY(-10%) !important;
+            max-height: 85vh !important;
+            position: fixed !important;
+        }
+    }
+
+    /* Extra specific styling for very small screens */
+    @media screen and (max-width: 420px) {
+        iframe[id^='yoco-payment-form'] {
+            margin-top: 200px !important; /* Significantly increased margin */
+            top: 0 !important; /* Remove top percentage */
+            transform: none !important; /* Remove transform */
+            max-height: 75vh !important; /* Reduced max height */
+            position: fixed !important;
+            padding-top: 20px !important; /* Add padding at the top */
+        }
+    }
+`;
+document.head.appendChild(styleSheet);
+
+// Update the handleCheckout function with increased spacing
+async function handleCheckout(event) {
+    event.preventDefault();
+    const submitButton = document.querySelector('.btn-place-order');
+    const errorElement = document.getElementById('payment-error');
+    const modal = document.getElementById('checkoutModal');
+    
+    try {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Checking requirements...';
+        errorElement.style.display = 'none';
+        
+        await performPrePaymentChecks();
+        
+        submitButton.textContent = 'Processing...';
+        
+        if (!yoco) {
+            throw new Error('Payment system not initialized');
+        }
+
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        if (cart.length === 0) {
+            throw new Error('Cart is empty');
+        }
+
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = subtotal + DELIVERY_FEE;
+
+        // Hide the checkout modal while Yoco popup is active
+        modal.style.visibility = 'hidden';
+
+        // Get window dimensions and calculate positioning
+        const windowWidth = window.innerWidth;
+        const isVerySmallScreen = windowWidth <= 420;
+        const isMobile = windowWidth <= 768;
+        const headerHeight = isVerySmallScreen ? 200 : 120; // Significantly increased header spacing
+        
+        // Initialize Yoco popup with increased spacing
+        yoco.showPopup({
+            amountInCents: Math.round(total * 100),
+            currency: 'ZAR',
+            name: "Sanne's Palace Order",
+            description: `Order Total: R${total.toFixed(2)}`,
+            position: {
+                // Much more space for very small screens
+                top: isVerySmallScreen 
+                    ? headerHeight + 50 // Added extra spacing
+                    : isMobile 
+                        ? headerHeight + 30
+                        : undefined,
+            },
+            callback: async function(result) {
+                // Show the modal again after Yoco popup closes
+                modal.style.visibility = 'visible';
+                
+                if (result.error) {
+                    errorElement.textContent = result.error.message;
+                    errorElement.style.display = 'block';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Pay and Place Order';
+                    return;
+                }
+                submitButton.textContent = 'Processing Order...';
+                await processSuccessfulPayment(result);
+            }
+        });
+        
+    } catch (error) {
+        // Show the modal again in case of error
+        modal.style.visibility = 'visible';
+        
+        console.error('Checkout error:', error);
+        if (error.message.includes('Please complete your address') || 
+            error.message.includes('Please set your delivery location') ||
+            error.message.includes('Please add your phone number')) {
+            alert(error.message + '\n\nRedirecting to Profile page...');
+            window.location.href = 'profile.html';
+            return;
+        }
+        
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+        submitButton.disabled = false;
+        submitButton.textContent = 'Pay and Place Order';
+    }
+}
 
 
-
+// Update the close modal function to reset visibility
+function closeCheckoutModal() {
+    const modal = document.getElementById('checkoutModal');
+    const paymentForm = document.getElementById('payment-form');
+    const errorElement = document.getElementById('payment-error');
+    const submitButton = document.querySelector('.btn-place-order');
+    
+    // Reset everything when closing
+    paymentForm.innerHTML = '';
+    errorElement.style.display = 'none';
+    errorElement.textContent = '';
+    submitButton.disabled = false;
+    submitButton.textContent = 'Pay and Place Order';
+    
+    modal.style.display = 'none';
+    modal.style.visibility = 'visible'; // Reset visibility
+    document.body.style.overflow = 'auto';
+}
 
 
 
@@ -365,93 +532,10 @@ async function openCheckoutModal() {
 
 
 // Add this CSS to your styles
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-    .modal {
-        z-index: 1000;
-    }
-    .modal-content {
-        z-index: 1001;
-    }
-    /* Target Yoco's iframe and overlay */
-    .yoco-payment-overlay {
-        z-index: 99999 !important;
-    }
-    iframe[id^='yoco-3ds-modal'] {
-        z-index: 100000 !important;
-    }
-    .yoco-payment-overlay-modal {
-        z-index: 100001 !important;
-    }
-`;
+
 document.head.appendChild(styleSheet);
 
-async function handleCheckout(event) {
-    event.preventDefault();
-    const submitButton = document.querySelector('.btn-place-order');
-    const errorElement = document.getElementById('payment-error');
-    
-    try {
-        submitButton.disabled = true;
-        submitButton.textContent = 'Checking requirements...';
-        errorElement.style.display = 'none';
-        
-        // Perform all pre-payment checks first
-        await performPrePaymentChecks();
-        
-        // If all checks pass, show Yoco form
-        submitButton.textContent = 'Processing...';
-        
-        if (!yoco) {
-            throw new Error('Payment system not initialized');
-        }
 
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        if (cart.length === 0) {
-            throw new Error('Cart is empty');
-        }
-
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const total = subtotal + DELIVERY_FEE;
-
-        // Add a small delay to ensure modal rendering is complete
-        setTimeout(() => {
-            // Initialize Yoco popup with higher z-index
-            yoco.showPopup({
-                amountInCents: Math.round(total * 100),
-                currency: 'ZAR',
-                name: "Sanne's Palace Order",
-                description: `Order Total: R${total.toFixed(2)}`,
-                callback: async function(result) {
-                    if (result.error) {
-                        errorElement.textContent = result.error.message;
-                        errorElement.style.display = 'block';
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Pay and Place Order';
-                        return;
-                    }
-                    submitButton.textContent = 'Processing Order...';
-                    await processSuccessfulPayment(result);
-                }
-            });
-        }, 100);
-        
-    } catch (error) {
-        console.error('Checkout error:', error);
-        if (error.message.includes('Please complete your address') || 
-            error.message.includes('Please set your delivery location') ||
-            error.message.includes('Please add your phone number')) {
-            alert(error.message + '\n\nRedirecting to Profile page...');
-            window.location.href = 'profile.html';
-            return;
-        }
-        
-        errorElement.textContent = error.message;
-        errorElement.style.display = 'block';
-        submitButton.disabled = false;
-        submitButton.textContent = 'Pay and Place Order';
-    }
-}
 
 // Update modal setup to ensure proper layering
 function setupCheckoutModal() {
@@ -479,22 +563,6 @@ function setupCheckoutModal() {
 
 
 
-function closeCheckoutModal() {
-    const modal = document.getElementById('checkoutModal');
-    const paymentForm = document.getElementById('payment-form');
-    const errorElement = document.getElementById('payment-error');
-    const submitButton = document.querySelector('.btn-place-order');
-    
-    // Reset everything when closing
-    paymentForm.innerHTML = '';
-    errorElement.style.display = 'none';
-    errorElement.textContent = '';
-    submitButton.disabled = false;
-    submitButton.textContent = 'Pay and Place Order';
-    
-    modal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-}
 
 
 
