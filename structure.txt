@@ -1,0 +1,8 @@
+food-delivery/
+├── index.html
+├── menu.html (we'll create this next)
+├── styles/
+│   ├── main.css
+│   └── auth.css
+└── scripts/
+    └── auth.js

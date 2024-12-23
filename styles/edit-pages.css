@@ -1,0 +1,115 @@
+.edit-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.edit-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.back-button {
+    font-size: 24px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.back-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.edit-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.edit-description {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+input {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    border-color: var(--text-primary);
+}
+.update-button {
+    padding: 16px;
+    background: var(--text-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.update-button:hover {
+    opacity: 0.9;
+}
+
+.update-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: var(--danger-color);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .edit-container {
+        padding: 16px;
+    }
+
+    .edit-header h1 {
+        font-size: 28px;
+    }
+
+    .edit-description {
+        font-size: 16px;
+    }
+
+    input {
+        font-size: 16px;
+        padding: 14px;
+    }
+
+    .update-button {
+        font-size: 16px;
+        padding: 14px;
+    }
+}

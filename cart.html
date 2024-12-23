@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart - Sanne's Palace</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://js.yoco.com/sdk/v1/yoco-sdk-web.js"></script>
+    <link rel="stylesheet" href="styles/navigation.css">
+    <link rel="stylesheet" href="styles/cart.css">
+    <link rel="icon" type="image/jpeg" href="head.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-container">
+                <img src="head.png" alt="Sanne's Palace Logo" class="logo">
+                <h2 class="brand-name">Sanne's Palace</h1>
+            </div>
+            <div class="nav-links">
+                <a href="menu.html" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Menu</span>
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="track.html" class="nav-link">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Track</span>
+                </a>
+                <a href="profile.html" class="nav-link">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="#" class="nav-link cart-icon  active">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </a>
+            </div>
+            <!-- Mobile Top Cart Icon -->
+            <a href="cart.html" class="cart-icon mobile-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-items">
+            <a href="menu.html" class="mobile-nav-item">
+                <i class="fas fa-home"></i>
+                <span>Menu</span>
+            </a>
+            <a href="orders.html" class="mobile-nav-item">
+                <i class="fas fa-list-alt"></i>
+                <span>Orders</span>
+            </a>
+            <a href="track.html" class="mobile-nav-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Track</span>
+            </a>
+            <a href="profile.html" class="mobile-nav-item">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="cart-container">
+            <div class="cart-header">
+                <h2>Your Cart</h2>
+                <span id="itemCount"></span>
+            </div>
+            <div id="cartItems" class="cart-items">
+                <!-- Cart items will be added here -->
+            </div>
+            <div class="cart-summary">
+                <div class="subtotal">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">R0.00</span>
+                </div>
+                <div class="delivery-fee">
+                    <span>Delivery Fee:</span>
+                    <span>R20.00</span>
+                </div>
+                <div class="total">
+                    <span>Total:</span>
+                    <span id="total">R0.00</span>
+                </div>
+                <button id="checkoutBtn" class="btn-checkout">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    
+   <!-- Checkout Modal -->
+<div id="checkoutModal" class="modal">
+    <div class="modal-content">
+        <button class="close-modal" id="closeModal">&times;</button>
+        <h3>Checkout</h3>
+        <form id="checkoutForm">
+            <div class="form-group">
+                <label for="instructions">Delivery Instructions (Optional)</label>
+                <textarea id="instructions"></textarea>
+            </div>
+            <div id="payment-form"></div>
+            <div class="order-summary">
+                <div id="modal-subtotal"></div>
+                <div id="modal-delivery"></div>
+                <div id="modal-total"></div>
+            </div>
+            <div id="payment-error" class="error-message" style="display: none;"></div>
+            <button type="submit" class="btn-place-order">Pay and Place Order</button>
+        </form>
+    </div>
+</div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://js.yoco.com/sdk/v1/yoco-sdk-web.js"></script>
+    <script src="scripts/cart.js"></script>
+    <script src="scripts/navigation.js"></script>
+</body>
+</html>

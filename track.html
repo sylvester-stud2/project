@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Order - Sanne's Palace</title>
+    
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles/navigation.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="scripts/navigation.js"></script>
+    <link rel="icon" type="image/jpeg" href="head.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            padding-top: 80px; /* Height of the navbar */
+            padding-bottom: 70px; /* Height of the mobile bottom nav */
+            background-color: #f4f4f4;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 80px; /* Fixed height for navbar */
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: white;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+            height: 60px; /* Fixed height for mobile nav */
+        }
+
+        .tracking-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .order-header {
+            padding: 20px;
+            border-bottom: 2px solid #FFD700;
+            display: block;
+        }
+
+        .order-header h2 {
+            margin: 0;
+            margin-bottom: 15px;
+            color: #000;
+        }
+
+        .order-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .status-confirmed {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-delivering {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-delivered {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .map-container {
+            height: 400px;
+            width: 100%;
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .driver-info {
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+            display: none;
+        }
+
+        .driver-info.active {
+            display: block;
+        }
+
+        .driver-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .driver-details {
+            flex: 1;
+        }
+
+        .driver-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .vehicle-info {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            margin-top: 20px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FFD700;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            padding: 20px;
+            background: #f8d7da;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .driver-marker {
+            width: 35px;
+            height: 35px;
+            background: #FFD700;
+            border: 3px solid #000;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .order-details {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            font-size: 0.95rem;
+            color: #666;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .order-details-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .order-details-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .order-details-label {
+            font-weight: 600;
+            width: 120px;
+            color: #495057;
+        }
+
+        .order-details-value {
+            color: #212529;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Media queries for responsive design */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 60px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .tracking-card {
+                margin: 10px 0;
+            }
+
+            .map-container {
+                height: 300px;
+            }
+
+            .order-header {
+                padding: 15px;
+            }
+
+            .driver-info {
+                padding: 15px;
+            }
+        }
+
+       
+
+        /* Ensure content is always visible */
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-container">
+                <img src="head.png" alt="Sanne's Palace Logo" class="logo">
+                <h2 class="brand-name">Sanne's Palace</h1>
+            </div>
+            <div class="nav-links">
+                <a href="menu.html" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Menu</span>
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="#" class="nav-link active">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Track</span>
+                </a>
+                <a href="profile.html" class="nav-link">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="cart.html" class="nav-link cart-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </a>
+            </div>
+            <!-- Mobile Top Cart Icon -->
+            <a href="cart.html" class="cart-icon mobile-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-items">
+            <a href="menu.html" class="mobile-nav-item">
+                <i class="fas fa-home"></i>
+                <span>Menu</span>
+            </a>
+            <a href="orders.html" class="mobile-nav-item">
+                <i class="fas fa-list-alt"></i>
+                <span>Orders</span>
+            </a>
+            <a href="#" class="mobile-nav-item active">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Track</span>
+            </a>
+            <a href="profile.html" class="mobile-nav-item">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading order details...</p>
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
+        <div id="order-tracking" class="tracking-card" style="display: none;">
+            <div class="order-header">
+                <h2>Order #<span id="order-id">Loading...</span></h2>
+                <div id="order-time"></div>
+            </div>
+
+            <div class="order-status">
+                <div id="status-icon" class="status-icon">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <div>
+                    <h3 id="status-text">Loading status...</h3>
+                    <p id="status-description"></p>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map" style="width: 100%; height: 100%;"></div>
+            </div>
+
+            <div id="driver-info" class="driver-info">
+                <div class="driver-profile">
+                    <div class="driver-details">
+                        <div id="driver-name" class="driver-name">Loading driver info...</div>
+                        <div id="vehicle-info" class="vehicle-info"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Show content immediately - remove loading screen
+document.getElementById('order-tracking').style.display = 'block';
+document.getElementById('loading').style.display = 'none';
+
+// Initialize Firebase immediately
+const firebaseConfig = {
+    apiKey: "AIzaSyB9x85hJMW22we8XlN1Q_Ca92Q5dV76IME",
+    authDomain: "kota-6e667.firebaseapp.com",
+    projectId: "kota-6e667",
+    storageBucket: "kota-6e667.appspot.com",
+    messagingSenderId: "698838744468",
+    appId: "1:698838744468:web:e5e718e9539dbd4431a381"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Initialize Mapbox
+mapboxgl.accessToken = 'pk.eyJ1Ijoic3lsdmVzdGVyMzMiLCJhIjoiY200a2JsdDJyMG02NjJrc2xzMG40b25wOSJ9.6MP3EOP-rPYvNIoe9UUxlA';
+
+// Constants
+const SHOP_LOCATION = [29.4029, -23.8646];
+let map = null;
+let driverMarker = null;
+let shopMarker = null;
+let driverLocationInterval = null;
+let deliveryMarker = null;
+
+// Initialize map immediately
+function initMap() {
+    if (!map && document.getElementById('map')) {
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: SHOP_LOCATION,
+            zoom: 12,
+            maxZoom: 16,
+            minZoom: 9,
+            pitch: 45,
+            preserveDrawingBuffer: true
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // Add shop marker immediately
+        shopMarker = new mapboxgl.Marker({ color: '#FF0000' })
+            .setLngLat(SHOP_LOCATION)
+            .setPopup(new mapboxgl.Popup().setHTML('<h3>Store Location</h3><p>Pickup Point</p>'))
+            .addTo(map);
+
+        return map;
+    }
+}
+
+// Start map initialization as early as possible
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMap);
+} else {
+    initMap();
+}
+
+// Pre-render initial state
+function setInitialState() {
+    document.getElementById('order-id').textContent = 'Loading...';
+    document.getElementById('order-time').textContent = '';
+    document.getElementById('status-text').textContent = 'Checking Order Status...';
+    document.getElementById('status-icon').innerHTML = '⏳';
+    document.getElementById('status-description').textContent = 'Loading your order details...';
+}
+
+// Set initial state immediately
+setInitialState();
+
+// Load order data in background
+async function loadOrderData(userId) {
+    try {
+        const ordersQuery = await db.collection('orders')
+            .where('userId', '==', userId)
+            .where('status', 'in', ['confirmed', 'delivering'])
+            .orderBy('timestamp', 'desc')
+            .limit(1)
+            .get();
+
+        if (!ordersQuery.empty) {
+            const orderDoc = ordersQuery.docs[0];
+            const orderId = orderDoc.id;
+            sessionStorage.setItem('currentOrderId', orderId);
+            return { orderDoc, orderId };
+        } else {
+            showNoOrdersMessage();
+            return null;
+        }
+    } catch (error) {
+        console.error('Error loading order:', error);
+        showError('Failed to load order details');
+        return null;
+    }
+}
+
+// Handle authentication state
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        const orderData = await loadOrderData(user.uid);
+        if (orderData) {
+            setupOrderTracking(orderData.orderDoc, orderData.orderId);
+            updateCartCount();
+        }
+    } else {
+        showLoginRequired();
+    }
+});
+
+// Setup order tracking
+function setupOrderTracking(orderDoc, orderId) {
+    let driverLocationUnsubscribe = null;
+
+    // Listen for order updates
+    const unsubscribe = db.collection('orders')
+        .doc(orderId)
+        .onSnapshot(async (doc) => {
+            if (!doc.exists) {
+                showError('Order not found');
+                return;
+            }
+
+            const orderData = doc.data();
+            updateOrderUI(orderData, doc.id);
+            updateOrderStatus(orderData.status);
+
+            // Handle driver tracking
+            if (orderData.status === 'delivering' && orderData.driverId) {
+                if (!driverLocationUnsubscribe) {
+                    driverLocationUnsubscribe = db.collection('drivers')
+                        .doc(orderData.driverId)
+                        .onSnapshot(driverDoc => {
+                            if (driverDoc.exists) {
+                                const driverData = driverDoc.data();
+                                if (driverData.currentLocation) {
+                                    updateDriverMarker([
+                                        driverData.currentLocation.longitude,
+                                        driverData.currentLocation.latitude
+                                    ]);
+                                }
+                            }
+                        });
+                }
+
+                document.getElementById('driver-info').classList.add('active');
+                document.getElementById('driver-name').textContent = orderData.driverName || 'Driver';
+                document.getElementById('vehicle-info').textContent = 
+                    `Vehicle: ${orderData.driverVehicle || 'Assigned'}`;
+            } else {
+                if (driverLocationUnsubscribe) {
+                    driverLocationUnsubscribe();
+                    driverLocationUnsubscribe = null;
+                }
+                document.getElementById('driver-info').classList.remove('active');
+                if (driverMarker) {
+                    driverMarker.remove();
+                    driverMarker = null;
+                }
+            }
+
+            updateDeliveryMarker(orderData);
+
+            if (orderData.status === 'delivered') {
+                sessionStorage.removeItem('currentOrderId');
+            }
+        });
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        unsubscribe();
+        if (driverLocationUnsubscribe) {
+            driverLocationUnsubscribe();
+        }
+    });
+}
+
+// UI Update Functions
+function updateOrderUI(orderData, orderId) {
+    document.getElementById('order-id').textContent = orderId;
+    document.getElementById('order-time').textContent = 
+        new Date(orderData.timestamp).toLocaleString();
+    
+    const itemsList = document.createElement('div');
+    itemsList.className = 'order-items';
+    itemsList.innerHTML = `
+        <div class="items-header" style="padding: 20px; background: #f8f9fa; margin-top: 20px;">
+            <h3>Order Items</h3>
+        </div>
+        <div class="items-list" style="padding: 20px;">
+            ${orderData.items.map(item => `
+                <div class="item" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px;">
+                    <div class="item-name" style="font-weight: 600;">${item.name} x ${item.quantity}</div>
+                    <div class="item-price">R${(item.price * item.quantity).toFixed(2)}</div>
+                </div>
+            `).join('')}
+            <div class="order-total" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #FFD700;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Subtotal:</span>
+                    <span>R${orderData.subtotal.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Delivery Fee:</span>
+                    <span>R${orderData.deliveryFee.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1em;">
+                    <span>Total:</span>
+                    <span>R${orderData.total.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingItems = document.querySelector('.order-items');
+    if (existingItems) {
+        existingItems.remove();
+    }
+    const orderTime = document.getElementById('order-time');
+    orderTime.parentNode.insertBefore(itemsList, orderTime.nextSibling);
+}
+
+function updateOrderStatus(status) {
+    const statusText = document.getElementById('status-text');
+    const statusIcon = document.getElementById('status-icon');
+    const statusDescription = document.getElementById('status-description');
+    
+    switch(status) {
+        case 'confirmed':
+            statusText.textContent = 'Preparing Order';
+            statusIcon.className = 'status-icon status-confirmed';
+            statusIcon.innerHTML = '👨‍🍳';
+            statusDescription.textContent = 'Your order is being prepared at our kitchen';
+            break;
+        case 'delivering':
+            statusText.textContent = 'On The Way';
+            statusIcon.className = 'status-icon status-delivering';
+            statusIcon.innerHTML = '🚗';
+            statusDescription.textContent = 'Your driver is on the way with your order';
+            break;
+        case 'delivered':
+            statusText.textContent = 'Delivered';
+            statusIcon.className = 'status-icon status-delivered';
+            statusIcon.innerHTML = '✅';
+            statusDescription.textContent = 'Your order has been delivered successfully';
+            break;
+        default:
+            statusText.textContent = 'Processing';
+            statusIcon.className = 'status-icon';
+            statusIcon.innerHTML = '⏳';
+            statusDescription.textContent = 'Your order is being processed';
+    }
+}
+
+function updateDeliveryMarker(orderData) {
+    if (!map || !orderData.address) return;
+
+    if (deliveryMarker) {
+        deliveryMarker.remove();
+    }
+
+    const addressHtml = `
+        <h3>Delivery Location</h3>
+        <p>${orderData.address.street}</p>
+        <p>${orderData.address.suburb}, ${orderData.address.city}</p>
+        <p>${orderData.address.province}, ${orderData.address.postalCode}</p>
+        ${orderData.instructions ? `<p><strong>Instructions:</strong> ${orderData.instructions}</p>` : ''}
+    `;
+
+    deliveryMarker = new mapboxgl.Marker({ 
+        color: orderData.status === 'delivering' ? '#FFA500' : '#000000'
+    })
+    .setLngLat([orderData.address.coordinates?.longitude || 0, orderData.address.coordinates?.latitude || 0])
+    .setPopup(new mapboxgl.Popup().setHTML(addressHtml))
+    .addTo(map);
+
+    const bounds = new mapboxgl.LngLatBounds()
+        .extend(SHOP_LOCATION)
+        .extend([
+            orderData.address.coordinates?.longitude || 0,
+            orderData.address.coordinates?.latitude || 0
+        ]);
+
+    if (driverMarker) {
+        bounds.extend(driverMarker.getLngLat());
+    }
+
+    map.fitBounds(bounds, { 
+        padding: 50,
+        maxZoom: 14
+    });
+}
+
+function updateDriverMarker(location) {
+    if (!map) return;
+
+    if (driverMarker) {
+        driverMarker.remove();
+    }
+
+    const el = document.createElement('div');
+    el.className = 'driver-marker';
+    el.style.width = '35px';
+    el.style.height = '35px';
+    el.style.backgroundColor = '#FFFFFF';
+    el.style.border = '4px solid #FFD700';
+    el.style.borderRadius = '50%';
+    el.style.boxShadow = '0 0 20px #FFD700';
+    el.style.position = 'relative';
+
+    const pulse = document.createElement('div');
+    pulse.style.position = 'absolute';
+    pulse.style.top = '-5px';
+    pulse.style.left = '-5px';
+    pulse.style.right = '-5px';
+    pulse.style.bottom = '-5px';
+    pulse.style.borderRadius = '50%';
+    pulse.style.backgroundColor = 'rgba(255, 215, 0, 0.3)';
+    pulse.style.animation = 'pulse 1.5s infinite';
+    el.appendChild(pulse);
+
+    driverMarker = new mapboxgl.Marker({ element: el })
+        .setLngLat(location)
+        .setPopup(new mapboxgl.Popup().setHTML('<h3>Driver Location</h3><p>Your order is on the way!</p>'))
+        .addTo(map);
+
+    const bounds = new mapboxgl.LngLatBounds()
+        .extend(location)
+        .extend(SHOP_LOCATION);
+
+    if (deliveryMarker) {
+        bounds.extend(deliveryMarker.getLngLat());
+    }
+
+    map.fitBounds(bounds, {
+        padding: 100,
+        duration: 1000
+    });
+}
+
+// Helper Functions
+function showError(message) {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24; margin-bottom: 10px;">Error</h3>
+            <p>${message}</p>
+            <p style="margin-top: 10px;">
+                <a href="menu.html" style="color: #721c24; text-decoration: underline;">
+                    Return to Menu
+                </a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+}
+
+function showNoOrdersMessage() {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24; margin-bottom: 10px;">No Active Orders</h3>
+            <p>You don't have any orders to track at the moment.</p>
+            <p style="margin-top: 10px;">
+                <a href="menu.html" style="color: #721c24; text-decoration: underline;">
+                    Place an Order
+                </a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+}
+
+function showLoginRequired() {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24;margin-bottom: 10px;">Login Required</h3>
+            <p>Please log in to track your orders.</p>
+            <p style="margin-top: 10px;">
+                <a href="login.html" style="color: #721c24; text-decoration: underline;">
+                    Login Now
+                </a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+}
+
+// Cart management
+
+// Cleanup function
+function cleanup() {
+    if (driverLocationInterval) {
+        clearInterval(driverLocationInterval);
+        driverLocationInterval = null;
+    }
+
+    if (map) {
+        map.remove();
+        map = null;
+    }
+
+    if (driverMarker) {
+        driverMarker.remove();
+        driverMarker = null;
+    }
+
+    if (deliveryMarker) {
+        deliveryMarker.remove();
+        deliveryMarker = null;
+    }
+
+    sessionStorage.removeItem('currentOrderId');
+}
+
+// Mobile navigation setup
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    mobileNavItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            mobileNavItems.forEach(navItem => navItem.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Check for shared link access
+    const params = new URLSearchParams(window.location.search);
+    const sharedOrderId = params.get('orderId');
+
+    if (sharedOrderId) {
+        handleSharedOrder(sharedOrderId);
+    }
+});
+
+// Handle shared order links
+async function handleSharedOrder(orderId) {
+    try {
+        const orderDoc = await db.collection('orders').doc(orderId).get();
+        if (orderDoc.exists) {
+            sessionStorage.setItem('currentOrderId', orderId);
+            const orderData = orderDoc.data();
+            setupOrderTracking(orderDoc, orderId);
+        } else {
+            showError('Order not found');
+        }
+    } catch (error) {
+        console.error('Error loading shared order:', error);
+        showError('Error loading order details');
+    }
+}
+
+// Map error handling
+if (map) {
+    map.on('load', () => {
+        // Optimize map when not visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                map.stop();
+            } else {
+                map.start();
+            }
+        });
+    });
+
+    map.on('error', (error) => {
+        console.error('Map error:', error);
+        showError('Error loading map. Please refresh the page.');
+    });
+}
+
+// Global error handling
+window.addEventListener('error', function(event) {
+    console.error('Global error:', event.error);
+    showError('Something went wrong. Please refresh the page.');
+});
+
+// Handle page visibility
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && auth.currentUser) {
+        // Refresh data when page becomes visible
+        loadOrderData(auth.currentUser.uid);
+    }
+});
+
+// Cleanup on page unload
+window.addEventListener('unload', cleanup);
+
+// Initialize cart count when auth state changes
+auth.onAuthStateChanged(user => {
+    if (user) {
+        updateCartCount();
+    }
+});
+
+// Performance optimization for map tiles
+if (typeof mapboxgl !== 'undefined') {
+    mapboxgl.prewarm();
+}
+    
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Sanne's Palace</title>
+    <link rel="icon" type="image/jpeg" href="head.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+        
+        /* Background wrapper for blur effect */
+        .background-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: url('background.jpg') center center / cover no-repeat fixed;
+        }
+        
+        /* Overlay for blur effect */
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: -1;
+        }
+        
+        /* Rest of your CSS remains the same */
+        .auth-container {
+            background: rgba(255, 255, 255, 0.8);  /* 0.8 opacity for semi-transparent white */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Make input backgrounds semi-transparent too */
+        input {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+     
+        
+        h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #FFB800;
+            box-shadow: 0 0 0 2px rgba(255, 184, 0, 0.2);
+        }
+        
+        input.invalid {
+            border-color: #FFB800;
+            background-color: #fff9e6;
+        }
+        
+        .error-message {
+            color: #FFB800;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .field-error {
+            color: #FFB800;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #FFB800;
+            background-color: #fff9e6;
+            border: 1px solid #FFE099;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #FFB800;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #E6A600;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .auth-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .auth-link a {
+            color: #FFB800;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
+
+        
+        </style>
+</head>
+<body>
+
+    <div class="background-wrapper"></div>
+    <div class="background-overlay"></div>
+    <div class="auth-container">
+        <h2>Create Account</h2>
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" required placeholder="Enter your full name">
+                <div class="field-error" id="fullNameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="Enter your email">
+                <div class="field-error" id="emailError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" required placeholder="Enter 10 digit number">
+                <div class="field-error" id="phoneError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="Minimum 6 characters">
+                <div class="field-error" id="passwordError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" required placeholder="Re-enter password">
+                <div class="field-error" id="confirmPasswordError"></div>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <button type="submit" id="submitButton">Create Account</button>
+        </form>
+
+        <p class="auth-link">
+            Already have an account? <a href="index.html">Login</a>
+        </p>
+    </div>
+
+  
+
+    <!-- Firebase Scripts -->
+    <!-- Update Firebase script order -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="scripts/signup.js"></script>
+
+    
+</body>
+</html>

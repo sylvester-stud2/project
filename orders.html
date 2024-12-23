@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History - Sanne's Palace</title>
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <!-- Load critical CSS first -->
+    <link rel="stylesheet" href="styles/navigation.css">
+    <link rel="stylesheet" href="styles/orders.css">
+    
+    <!-- Defer non-critical CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" media="print" onload="this.media='all'">
+    
+    <link rel="icon" type="image/jpeg" href="head.png">
+    
+    <!-- Add styles for loading state -->
+    <style>
+        .loading-state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .load-more-btn {
+            display: block;
+            width: 100%;
+            max-width: 200px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .load-more-btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .notification {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-container">
+                <img src="head.png" alt="Sanne's Palace Logo" class="logo">
+                <h2 class="brand-name">Sanne's Palace</h2>
+            </div>
+            <div class="nav-links">
+                <a href="menu.html" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Menu</span>
+                </a>
+                <a href="#" class="nav-link active">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="track.html" class="nav-link">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Track</span>
+                </a>
+                <a href="profile.html" class="nav-link">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="cart.html" class="nav-link cart-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </a>
+            </div>
+            <!-- Mobile Top Cart Icon -->
+            <a href="cart.html" class="cart-icon mobile-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-items">
+            <a href="menu.html" class="mobile-nav-item">
+                <i class="fas fa-home"></i>
+                <span>Menu</span>
+            </a>
+            <a href="orders.html" class="mobile-nav-item active">
+                <i class="fas fa-list-alt"></i>
+                <span>Orders</span>
+            </a>
+            <a href="track.html" class="mobile-nav-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Track</span>
+            </a>
+            <a href="profile.html" class="mobile-nav-item">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="orders-header">
+            <h1>Order History</h1>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading orders...</p>
+        </div>
+
+        <div class="orders-container">
+            <div id="ordersContent"></div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-clipboard-list"></i>
+                <h2>No past orders</h2>
+                <p>You haven't completed any orders yet.</p>
+                <a href="menu.html" class="browse-menu-btn">Browse Menu</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="scripts/orders.js"></script>
+    <script src="scripts/navigation.js"></script>
+</body>
+</html>

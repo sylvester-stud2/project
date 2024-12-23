@@ -1,0 +1,181 @@
+<!-- profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Sanne's Palace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles/navigation.css">
+    <link rel="stylesheet" href="styles/profile.css">
+    <link rel="icon" type="image/jpeg" href="head.png">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+</head>
+<body>
+    <!-- Keep your existing nav code -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-container">
+                <img src="head.png" alt="Sanne's Palace Logo" class="logo">
+                <h2 class="brand-name">Sanne's Palace</h1>
+            </div>
+            <div class="nav-links">
+                <a href="menu.html" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Menu</span>
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="track.html" class="nav-link">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Track</span>
+                </a>
+                <a href="#" class="nav-link active">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="cart.html" class="nav-link cart-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </a>
+            </div>
+            <!-- Mobile Top Cart Icon -->
+            <a href="cart.html" class="cart-icon mobile-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-items">
+            <a href="menu.html" class="mobile-nav-item">
+                <i class="fas fa-home"></i>
+                <span>Menu</span>
+            </a>
+            <a href="orders.html" class="mobile-nav-item">
+                <i class="fas fa-list-alt"></i>
+                <span>Orders</span>
+            </a>
+            <a href="track.html" class="mobile-nav-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Track</span>
+            </a>
+            <a href="#" class="mobile-nav-item active">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="profile-header animate-in">
+            <!-- <h1 class="title-text">My Profile</h1> -->
+            <p class="subtitle-text">Manage your account information</p>
+        </div>
+        
+     
+        
+        <section class="info-section animate-in">
+            <h2 class="section-title">Basic Information</h2>
+            
+            <div class="info-card">
+                <div class="info-item" onclick="editField('fullName')">
+                    <div class="field-content">
+                        <div class="field-label">Full Name</div>
+                        <div class="field-value" id="fullNameValue"></div>
+                    </div>
+                    <div class="chevron-wrapper">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="info-item" onclick="editField('email')">
+                    <div class="field-content">
+                        <div class="field-label">Email Address</div>
+                        <div class="field-value" id="emailValue"></div>
+                    </div>
+                    <div class="chevron-wrapper">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="info-item" onclick="editField('phone')">
+                    <div class="field-content">
+                        <div class="field-label">Phone Number</div>
+                        <div class="field-value" id="phoneValue"></div>
+                    </div>
+                    <div class="chevron-wrapper">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                <h2 class="section-title">Delivery Address</h2>
+                    <div class="info-card">
+                        <div class="address-container">
+                            <div id="fullAddress"></div>
+                        </div>
+                    </div>
+
+
+                        <!-- Add this after the delivery address section in your HTML -->
+            <div class="info-card">
+                <h2 class="section-title">Location</h2>
+                <div id="location-container">
+                    <div id="location-map" class="location-map"></div>
+                    <div class="coordinates-display">
+                        <p><strong>Current Location:</strong></p>
+                        <p id="latitudeValue">Not set</p>
+                        <p id="longitudeValue">Not set</p>
+                    </div>
+                    <button class="btn btn-primary" id="getCurrentLocation">
+                        <i class="fas fa-location-arrow"></i> Get Current Location
+                    </button>
+                </div>
+            </div>
+                
+                <!-- <div class="info-item" onclick="editField('idNumber')">
+                    <div class="field-content">
+                        <div class="field-label">ID Number</div>
+                        <div class="field-value" id="idNumberValue">Loading...</div>
+                    </div>
+                    <div class="chevron-wrapper">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div> -->
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-danger" id="signOutBtn">Sign Out</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal for editing fields -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Edit <span id="editFieldName">Field</span></h3>
+            <input type="text" id="editInput" class="edit-input">
+            <div class="error-message" id="editError"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="scripts/profile.js"></script>
+    <script src="scripts/navigation.js"></script>
+</body>
+</html>
