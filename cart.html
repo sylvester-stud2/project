@@ -10,6 +10,30 @@
     <link rel="stylesheet" href="styles/cart.css">
     <link rel="icon" type="image/jpeg" href="head.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Add a class for reduced navbar height */
+        .navbar.payment-active {
+            padding: 0.3rem !important;
+            min-height: 35px !important;
+            height: 35px !important;
+        }
+        
+        .navbar.payment-active .logo {
+            height: 25px !important;
+        }
+        
+        .navbar.payment-active .brand-name {
+            font-size: 1.2rem !important;
+        }
+        
+        /* Adjust Yoco form positioning with reduced navbar */
+        @media screen and (max-width: 768px) {
+            .navbar.payment-active + .container iframe[id^='yoco-payment-form'] {
+                top: 45px !important;
+                max-height: calc(100vh - 90px) !important;
+            }
+        }
+        </style>
 </head>
 <body>
     <nav class="navbar">
