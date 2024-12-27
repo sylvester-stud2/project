@@ -23,28 +23,28 @@ const menuItems = {
             name: 'POLO TSI',
             description: 'ACHAR | POLONY | CHIPS | VIENNA | LETTUCE',
             price: 35.00,
-            image: 'https://lh3.googleusercontent.com/40I6BfXs29ybMx9KBZGsBOYBXkXZYc4Y2pOo32G6AF4XShhWnD3VEkZ4W8iX65g0yXcUqIahFududEmDWGtECDpZ8zWFZRS0EjY-=s1000'
+            image: './images/Polo TSI kota.jpeg'
         },
         {
             id: 'k2',
             name: 'M2',
             description: 'ACHAR | POLONY | CHIPS | CHEESE | LETTUCE | HALF RUSSIAN',
             price: 40.00,
-            image: 'https://via.placeholder.com/300x200'
+            image: './images/M2.jpeg'
         },
         {
             id: 'k3',
             name: 'M3',
             description: 'ATCHAR | BURGER | CHEESE | FULL RUSSIAN | EGG LETTUCE | CHIPS',
             price: 60.00,
-            image: 'https://via.placeholder.com/300x200'
+            image: './images/M3.jpeg'
         },
         {
             id: 'k4',
             name: 'G63 WAGON LUMMA (FULL HOUSE)',
             description: 'ACHAR | 2 BURGER | CHEESE | POLONY| 2 FULL VIENNA |  2 FULL RUSSIAN | LETTUCE / CUCUMBER | CHIPS | FULL LOAF | Eggs',
             price: 120.00,
-            image: 'https://via.placeholder.com/300x200'
+            image: './images/G63.jpeg'
         }
     ],
     platters: [
