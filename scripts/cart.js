@@ -127,8 +127,8 @@ let yoco;
 document.addEventListener('DOMContentLoaded', () => {
     try {
         yoco = new window.YocoSDK({
-            publicKey: 'pk_live_33ec1040vnYeAqq33ae4',
-            env: 'live'
+            publicKey: 'pk_test_0c72d315vnYeAqq89ce4',
+            env: 'test'
         });
         console.log('Yoco SDK initialized successfully');
     } catch (error) {
