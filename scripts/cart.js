@@ -17,9 +17,13 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 
 // Constants
-const DELIVERY_FEE = 0;
+const DELIVERY_FEE = 20.00;
+const COLLECTION_FEE = 0.00;
 const LOCATION_THRESHOLD = 0.5; // 500 meters in kilometers
 
+function getOrderType() {
+    return document.getElementById('orderType').value;
+}
 // Operating Hours
 const OPERATING_HOURS = {
     1: { // Monday
@@ -192,22 +196,17 @@ function displayCart() {
 }
 
 function updateTotals(subtotal) {
-    const subtotalElement = document.getElementById('subtotal');
-    const totalElement = document.getElementById('total');
+    const orderType = getOrderType();
+    const fee = orderType === 'delivery' ? DELIVERY_FEE : COLLECTION_FEE;
+    const total = subtotal + fee;
+
+    document.getElementById('subtotal').textContent = `R${subtotal.toFixed(2)}`;
+    document.getElementById('deliveryFee').textContent = `R${fee.toFixed(2)}`;
+    document.getElementById('total').textContent = `R${total.toFixed(2)}`;
+    
     const checkoutBtn = document.getElementById('checkoutBtn');
-    
-    if (!subtotalElement || !totalElement || !checkoutBtn) {
-        console.error('Total elements not found');
-        return;
-    }
-    
-    subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
-    const total = subtotal + (subtotal > 0 ? DELIVERY_FEE : 0);
-    totalElement.textContent = `R${total.toFixed(2)}`;
-    
     checkoutBtn.disabled = subtotal === 0;
 }
-
 function updateQuantity(itemId, newQuantity) {
     try {
         if (newQuantity < 1) {
@@ -245,13 +244,14 @@ function removeItem(itemId) {
 function updateOrderSummary() {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const total = subtotal + DELIVERY_FEE;
+    const orderType = getOrderType();
+    const fee = orderType === 'delivery' ? DELIVERY_FEE : COLLECTION_FEE;
+    const total = subtotal + fee;
 
     document.getElementById('modal-subtotal').textContent = `Subtotal: R${subtotal.toFixed(2)}`;
-    document.getElementById('modal-delivery').textContent = `Delivery Fee: R${DELIVERY_FEE.toFixed(2)}`;
+    document.getElementById('modal-delivery').textContent = `${orderType === 'delivery' ? 'Delivery' : 'Collection'} Fee: R${fee.toFixed(2)}`;
     document.getElementById('modal-total').textContent = `Total: R${total.toFixed(2)}`;
 }
-
 
 
 function generateReference() {
@@ -260,22 +260,32 @@ function generateReference() {
     return `SP-${timestamp}-${random}`;
 }
 
-// Update the handleCheckout function with proper callback structure
+
+
+
+
+
+
+
+
+
+
 async function handleCheckout(event) {
     event.preventDefault();
     const submitButton = document.querySelector('.btn-place-order');
     const errorElement = document.getElementById('payment-error');
-    const modal = document.getElementById('checkoutModal');
     
     try {
         submitButton.disabled = true;
         submitButton.textContent = 'Checking requirements...';
         errorElement.style.display = 'none';
-        
-        await performPrePaymentChecks();
-        
-        submitButton.textContent = 'Processing...';
 
+        const orderType = getOrderType();
+        if (orderType === 'delivery') {
+            await performPrePaymentChecks();
+        }
+
+        submitButton.textContent = 'Processing...';
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
         if (cart.length === 0) {
             throw new Error('Cart is empty');
@@ -287,71 +297,30 @@ async function handleCheckout(event) {
         const userData = userDoc.data();
 
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const total = subtotal + DELIVERY_FEE;
+        const fee = orderType === 'delivery' ? DELIVERY_FEE : COLLECTION_FEE;
+        const total = subtotal + fee;
 
-        // Initialize Paystack payment with properly structured callbacks
         const handler = PaystackPop.setup({
             key: 'pk_live_ead19b409cdc645f5ff8942ef28f6d2e226841d1',
             email: userData.email,
-            amount: Math.round(total * 100), // Convert to cents
+            amount: Math.round(total * 100),
             currency: 'ZAR',
             ref: generateReference(),
-            metadata: {
-                custom_fields: [
-                    {
-                        display_name: "Order Details",
-                        variable_name: "order_details",
-                        value: JSON.stringify({
-                            items: cart,
-                            deliveryFee: DELIVERY_FEE,
-                            subtotal: subtotal,
-                            instructions: document.getElementById('instructions').value
-                        })
-                    }
-                ]
+            callback: function(response) {
+                processSuccessfulPayment(response);
             },
             onClose: function() {
-                return new Promise((resolve) => {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Pay and Place Order';
-                    errorElement.textContent = 'Transaction cancelled';
-                    errorElement.style.display = 'block';
-                    resolve();
-                });
-            },
-            callback: function(response) {
-                return new Promise(async (resolve, reject) => {
-                    try {
-                        await processSuccessfulPayment({
-                            id: response.reference,
-                            status: response.status
-                        });
-                        resolve();
-                    } catch (error) {
-                        console.error('Payment processing error:', error);
-                        errorElement.textContent = 'Error processing payment. Please try again.';
-                        errorElement.style.display = 'block';
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Pay and Place Order';
-                        reject(error);
-                    }
-                });
+                submitButton.disabled = false;
+                submitButton.textContent = 'Pay and Place Order';
+                errorElement.textContent = 'Transaction cancelled';
+                errorElement.style.display = 'block';
             }
         });
 
-        // Open Paystack iframe
         handler.openIframe();
 
     } catch (error) {
         console.error('Checkout error:', error);
-        if (error.message.includes('Please complete your address') || 
-            error.message.includes('Please set your delivery location') ||
-            error.message.includes('Please add your phone number')) {
-            alert(error.message + '\n\nRedirecting to Profile page...');
-            window.location.href = 'profile.html';
-            return;
-        }
-        
         errorElement.textContent = error.message;
         errorElement.style.display = 'block';
         submitButton.disabled = false;
@@ -359,91 +328,156 @@ async function handleCheckout(event) {
     }
 }
 
-// Update the processSuccessfulPayment function to handle promises properly
-async function processSuccessfulPayment(paymentResult) {
-    const submitButton = document.querySelector('.btn-place-order');
-    const errorElement = document.getElementById('payment-error');
-    
-    try {
-        // Get cart data
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const userId = localStorage.getItem('userId');
-        const db = firebase.firestore();
+// async function processSuccessfulPayment(paymentResult) {
+//     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+//     const userId = localStorage.getItem('userId');
+//     const db = firebase.firestore();
+//     const orderType = getOrderType();
+
+//     try {
+//         const userDoc = await db.collection('users').doc(userId).get();
+//         const userData = userDoc.data();
+
+//         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+//         const fee = orderType === 'delivery' ? DELIVERY_FEE : COLLECTION_FEE;
+//         const total = subtotal + fee;
+//         const instructions = document.getElementById('instructions').value;
+
+//         const order = {
+//             userId,
+//             items: cart,
+//             orderType: orderType,
+//             ...(orderType === 'delivery' ? {
+//                 address: {
+//                     street: userData.street,
+//                     suburb: userData.suburb,
+//                     city: userData.city,
+//                     postalCode: userData.postalCode,
+//                     province: userData.province,
+//                     country: userData.country,
+//                     coordinates: userData.coordinates
+//                 }
+//             } : {}),
+//             phone: userData.phone,
+//             instructions,
+//             subtotal,
+//             fee,
+//             total,
+//             status: 'confirmed',
+//             timestamp: new Date().toISOString(),
+//             payment: {
+//                 status: 'completed',
+//                 timestamp: new Date().toISOString(),
+//                 reference: paymentResult.reference,
+//                 provider: 'paystack',
+//                 transactionId: paymentResult.reference
+//             }
+//         };
+
+//         const orderRef = await db.collection('orders').add(order);
+//         localStorage.setItem('latestOrderId', orderRef.id);
+//         localStorage.removeItem('cart');
         
-        // Get user data
+//         const modal = document.getElementById('checkoutModal');
+//         const modalContent = modal.querySelector('.modal-content');
+//         modalContent.innerHTML = `
+//             <div class="success-message">
+//                 <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 3rem; margin-bottom: 1rem;"></i>
+//                 <h2 style="color: #4CAF50; margin-bottom: 1rem;">Order Placed Successfully!</h2>
+//                 <p style="margin-bottom: 0.5rem;">Your order has been confirmed and is being processed.</p>
+//                 <p style="margin-bottom: 1rem;">Order Reference: #${orderRef.id}</p>
+//                 <p>Redirecting to order tracking...</p>
+//             </div>
+//         `;
+
+//         setTimeout(() => {
+//             window.location.href = 'track.html';
+//         }, 3000);
+
+//     } catch (error) {
+//         console.error('Error processing payment:', error);
+//         throw error;
+//     }
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Operating Hours Functions
+
+
+async function processSuccessfulPayment(paymentResult) {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const userId = localStorage.getItem('userId');
+    const db = firebase.firestore();
+    const orderType = getOrderType();
+
+    try {
         const userDoc = await db.collection('users').doc(userId).get();
         const userData = userDoc.data();
 
-        // Calculate totals
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const total = subtotal + DELIVERY_FEE;
+        const fee = orderType === 'delivery' ? DELIVERY_FEE : COLLECTION_FEE;
+        const total = subtotal + fee;
         const instructions = document.getElementById('instructions').value;
 
-        // Create order object
         const order = {
             userId,
             items: cart,
-            address: {
-                street: userData.street,
-                suburb: userData.suburb,
-                city: userData.city,
-                postalCode: userData.postalCode,
-                province: userData.province,
-                country: userData.country,
-                coordinates: userData.coordinates
-            },
+            orderType: orderType,
+            ...(orderType === 'delivery' ? {
+                address: {
+                    street: userData.street,
+                    suburb: userData.suburb,
+                    city: userData.city,
+                    postalCode: userData.postalCode,
+                    province: userData.province,
+                    country: userData.country,
+                    coordinates: userData.coordinates
+                },
+                status: 'received'
+            } : {
+                status: 'received' 
+            }),
             phone: userData.phone,
             instructions,
             subtotal,
-            deliveryFee: DELIVERY_FEE,
+            fee,
             total,
-            status: 'confirmed',
             timestamp: new Date().toISOString(),
             payment: {
-                status: paymentResult.status === 'success' ? 'completed' : 'failed',
+                status: 'completed',
                 timestamp: new Date().toISOString(),
-                reference: paymentResult.id,
+                reference: paymentResult.reference,
                 provider: 'paystack',
-                transactionId: paymentResult.id
+                transactionId: paymentResult.reference
             }
         };
 
-        // Save order to Firestore
         const orderRef = await db.collection('orders').add(order);
         localStorage.setItem('latestOrderId', orderRef.id);
-
-        // Update UI with success message
-        const modal = document.getElementById('checkoutModal');
-        const modalContent = modal.querySelector('.modal-content');
-        modalContent.innerHTML = `
-            <div class="success-message">
-                <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 3rem; margin-bottom: 1rem;"></i>
-                <h2 style="color: #4CAF50; margin-bottom: 1rem;">Order Placed Successfully!</h2>
-                <p style="margin-bottom: 0.5rem;">Your order has been confirmed and is being processed.</p>
-                <p style="margin-bottom: 1rem;">Order Reference: #${orderRef.id}</p>
-                <p>Redirecting to order tracking...</p>
-            </div>
-        `;
-
-        // Clear cart and update UI
         localStorage.removeItem('cart');
-        updateCartCount();
-
-        // Redirect to tracking page
-        setTimeout(() => {
-            window.location.href = 'track.html';
-        }, 3000);
+        
+        showSuccessMessage(orderRef.id);
 
     } catch (error) {
-        console.error('Error processing order:', error);
-        errorElement.textContent = 'Error processing order. Please try again.';
-        errorElement.style.display = 'block';
-        submitButton.disabled = false;
-        submitButton.textContent = 'Pay and Place Order';
-        throw error; // Re-throw the error to be caught by the callback
+        console.error('Error processing payment:', error);
+        throw error;
     }
 }
-// Operating Hours Functions
+
+
+
 function checkOperatingHours() {
     const now = new Date();
     const day = now.getDay();
@@ -497,45 +531,131 @@ async function verifyDeliveryLocation(coordinates) {
     }
 }
 
-// Update the performPrePaymentChecks function
-async function performPrePaymentChecks() {
-    const userId = localStorage.getItem('userId');
-    const db = firebase.firestore();
 
-    // Check operating hours first
-    checkOperatingHours();
+async function validateUserProfile(userData) {
+    const requiredFields = {
+        fullName: 'Full Name',
+        email: 'Email',
+        phone: 'Phone Number',
+        street: 'Street Address',
+        suburb: 'Suburb',
+        city: 'City',
+        postalCode: 'Postal Code',
+        province: 'Province',
+        country: 'Country'
+    };
 
-    // Check for active orders
-    const hasActiveOrders = await checkActiveOrders(userId);
-    if (hasActiveOrders) {
-        throw new Error('You have an active order that is being processed or delivered. Please wait for it to be completed before placing a new order.');
-    }
+    const missingFields = [];
+    const invalidFields = [];
 
-    // Get user data
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userData = userDoc.data();
+    // Check for missing or empty fields
+    for (const [field, label] of Object.entries(requiredFields)) {
+        if (!userData[field] || userData[field].trim() === '') {
+            missingFields.push(label);
+            continue;
+        }
 
-    // Check address fields
-    const requiredFields = ['street', 'suburb', 'city', 'postalCode', 'province', 'country'];
-    const missingFields = requiredFields.filter(field => !userData[field]);
-    if (missingFields.length > 0) {
-        throw new Error(`Please complete your address in Profile:\n${missingFields.join(', ')}`);
+        // Validate field formats
+        switch (field) {
+            case 'email':
+                if (!validateEmail(userData[field])) {
+                    invalidFields.push(`Invalid ${label} format`);
+                }
+                break;
+            case 'phone':
+                if (!validatePhone(userData[field])) {
+                    invalidFields.push(`Invalid ${label} format (must be 10 digits)`);
+                }
+                break;
+            case 'postalCode':
+                if (!validatePostalCode(userData[field])) {
+                    invalidFields.push(`Invalid ${label} format`);
+                }
+                break;
+            case 'fullName':
+                if (userData[field].trim().length < 3) {
+                    invalidFields.push(`${label} must be at least 3 characters long`);
+                }
+                break;
+        }
     }
 
     // Check coordinates
     if (!userData.coordinates?.latitude || !userData.coordinates?.longitude) {
-        throw new Error('Please set your delivery location coordinates in Profile');
+        missingFields.push('Delivery Location');
     }
 
-    // First verify if saved address is in delivery zone
-    // const deliveryZoneCheck = await verifyDeliveryLocation(userData.coordinates);
-    // if (!deliveryZoneCheck.verified) {
-    //     throw new Error(deliveryZoneCheck.message);
-    // }
+    // Construct error message if needed
+    if (missingFields.length > 0 || invalidFields.length > 0) {
+        let errorMessage = '';
+        
+        if (missingFields.length > 0) {
+            errorMessage += `Please complete the following required fields in your profile:\n${missingFields.join('\n')}\n`;
+        }
+        
+        if (invalidFields.length > 0) {
+            errorMessage += `\nPlease correct the following issues:\n${invalidFields.join('\n')}`;
+        }
+        
+        throw new Error(errorMessage);
+    }
 
-    // Check phone number
-    if (!userData.phone) {
-        throw new Error('Please add your phone number in Profile');
+    return true;
+}
+
+// Update the performPrePaymentChecks function
+// Update the performPrePaymentChecks function to just check for existence of data
+async function performPrePaymentChecks() {
+    const userId = localStorage.getItem('userId');
+    const db = firebase.firestore();
+
+    try {
+        // Check for active orders
+        const hasActiveOrders = await checkActiveOrders(userId);
+        if (hasActiveOrders) {
+            throw new Error('You have an active order that is being processed or delivered. Please wait for it to be completed before placing a new order.');
+        }
+
+        // checkOperatingHours();
+
+        // Get user data
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = userDoc.data();
+
+        // Simple check for required fields
+        const requiredFields = [
+            'street',
+            'suburb', 
+            'city',
+            'postalCode',
+            'province',
+            'country',
+            'phone'
+        ];
+
+        const missingFields = requiredFields.filter(field => !userData[field]);
+        
+        // Check coordinates separately
+        if (!userData.coordinates?.latitude || !userData.coordinates?.longitude) {
+            missingFields.push('delivery location coordinates');
+        }
+
+        // If any fields are missing, throw error
+        if (missingFields.length > 0) {
+            throw new Error(`Please complete your profile information. Missing: ${missingFields.join(', ')}`);
+        }
+
+        // If delivery, verify location is in delivery zone
+        if (getOrderType() === 'delivery') {
+            const deliveryZoneCheck = await verifyDeliveryLocation(userData.coordinates);
+            if (!deliveryZoneCheck.verified) {
+                throw new Error(deliveryZoneCheck.message);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        throw error;
     }
 }
 
@@ -940,6 +1060,24 @@ function setupCheckoutModal() {
         }
     });
 }
+
+
+
+
+// Add event listener for order type changes
+document.addEventListener('DOMContentLoaded', () => {
+    const orderTypeSelect = document.getElementById('orderType');
+    if (orderTypeSelect) {
+        orderTypeSelect.addEventListener('change', function() {
+            const isDelivery = this.value === 'delivery';
+            const deliveryElements = document.querySelectorAll('.delivery-only');
+            deliveryElements.forEach(el => {
+                el.style.display = isDelivery ? 'block' : 'none';
+            });
+            displayCart(); // Refresh cart display with new totals
+        });
+    }
+});
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

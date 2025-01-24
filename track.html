@@ -277,6 +277,22 @@
             z-index: 1;
             margin-top: 20px;
         }
+
+
+        /* Chat system styles */
+
+
+.collection-info i {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+}
+
+@media (max-width: 768px) {
+    .collection-info {
+        padding: 15px !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -381,9 +397,6 @@
 
 
 
-
-
-<!-- Add this CSS to both files -->
 <style>
     .chat-container {
         position: fixed;
@@ -556,7 +569,7 @@
 }
     </style>
     
-    <!-- Add this HTML structure to both files -->
+    
     <div id="chat-toggle" class="chat-toggle" onclick="toggleChat()">
         <i class="fas fa-comments"></i>
     </div>
@@ -587,7 +600,7 @@
 </div>
     
 
-    <script>
+    <!-- <script>
    // Chat system state
 let chatUnsubscribe = null;
 let currentOrderId = null;
@@ -843,7 +856,7 @@ async function deleteAllMessages(orderId) {
             }
         }
     });
-    </script>
+    </script> -->
 
 
 
@@ -852,11 +865,7 @@ async function deleteAllMessages(orderId) {
 
 
     <script>
-// Show content immediately - remove loading screen
-document.getElementById('order-tracking').style.display = 'block';
-document.getElementById('loading').style.display = 'none';
-
-// Initialize Firebase immediately
+        // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDAvwoIEXPpCnPpxaKgaleiUHENNDGKG4Q",
     authDomain: "sannes-palace.firebaseapp.com",
@@ -873,32 +882,31 @@ const auth = firebase.auth();
 
 // Initialize Mapbox
 mapboxgl.accessToken = 'pk.eyJ1Ijoic3lsdmVzdGVyMzMiLCJhIjoiY200a2JsdDJyMG02NjJrc2xzMG40b25wOSJ9.6MP3EOP-rPYvNIoe9UUxlA';
-
-// Constants
 const SHOP_LOCATION = [29.4029, -23.8646];
 let map = null;
 let driverMarker = null;
 let shopMarker = null;
-let driverLocationInterval = null;
 let deliveryMarker = null;
 
-// Initialize map immediately
+// Chat system state
+let chatUnsubscribe = null;
+let currentOrderId = null;
+let currentRole = 'customer';
+
+// Initialize map
+// Also update the initMap function to check for order type
 function initMap() {
-    if (!map && document.getElementById('map')) {
+    if (!map && document.getElementById('map') && document.querySelector('.map-container').style.display !== 'none') {
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v11',
             center: SHOP_LOCATION,
             zoom: 12,
-            maxZoom: 16,
-            minZoom: 9,
-            pitch: 45,
-            preserveDrawingBuffer: true
+            pitch: 45
         });
 
         map.addControl(new mapboxgl.NavigationControl());
-
-        // Add shop marker immediately
+        
         shopMarker = new mapboxgl.Marker({ color: '#FF0000' })
             .setLngLat(SHOP_LOCATION)
             .setPopup(new mapboxgl.Popup().setHTML('<h3>Store Location</h3><p>Pickup Point</p>'))
@@ -908,141 +916,35 @@ function initMap() {
     }
 }
 
-// Start map initialization as early as possible
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMap);
-} else {
-    initMap();
-}
+// Initialize map on load
+document.addEventListener('DOMContentLoaded', initMap);
 
-// Pre-render initial state
-function setInitialState() {
-    document.getElementById('order-id').textContent = 'Loading...';
-    document.getElementById('order-time').textContent = '';
-    document.getElementById('status-text').textContent = 'Checking Order Status...';
-    document.getElementById('status-icon').innerHTML = '⏳';
-    document.getElementById('status-description').textContent = 'Loading your order details...';
-}
-
-// Set initial state immediately
-setInitialState();
-
-// Load order data in background
-async function loadOrderData(userId) {
-    try {
-        const ordersQuery = await db.collection('orders')
-            .where('userId', '==', userId)
-            .where('status', 'in', ['confirmed', 'delivering'])
-            .orderBy('timestamp', 'desc')
-            .limit(1)
-            .get();
-
-        if (!ordersQuery.empty) {
-            const orderDoc = ordersQuery.docs[0];
-            const orderId = orderDoc.id;
-            sessionStorage.setItem('currentOrderId', orderId);
-            return { orderDoc, orderId };
-        } else {
-            showNoOrdersMessage();
-            return null;
-        }
-    } catch (error) {
-        console.error('Error loading order:', error);
-        showError('Failed to load order details');
-        return null;
-    }
-}
-
-// Handle authentication state
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        const orderData = await loadOrderData(user.uid);
-        if (orderData) {
-            setupOrderTracking(orderData.orderDoc, orderData.orderId);
-            updateCartCount();
-        }
-    } else {
-        showLoginRequired();
-    }
-});
-
-// Setup order tracking
-function setupOrderTracking(orderDoc, orderId) {
-    let driverLocationUnsubscribe = null;
-
-    // Listen for order updates
-    const unsubscribe = db.collection('orders')
-        .doc(orderId)
-        .onSnapshot(async (doc) => {
-            if (!doc.exists) {
-                showError('Order not found');
-                return;
-            }
-
-            const orderData = doc.data();
-            updateOrderUI(orderData, doc.id);
-            updateOrderStatus(orderData.status);
-
-            // Handle driver tracking
-            if (orderData.status === 'delivering' && orderData.driverId) {
-                if (!driverLocationUnsubscribe) {
-                    driverLocationUnsubscribe = db.collection('drivers')
-                        .doc(orderData.driverId)
-                        .onSnapshot(driverDoc => {
-                            if (driverDoc.exists) {
-                                const driverData = driverDoc.data();
-                                if (driverData.currentLocation) {
-                                    updateDriverMarker([
-                                        driverData.currentLocation.longitude,
-                                        driverData.currentLocation.latitude
-                                    ]);
-                                }
-                            }
-                        });
-                }
-
-                document.getElementById('driver-info').classList.add('active');
-                document.getElementById('driver-name').textContent = orderData.driverName || 'Driver';
-                document.getElementById('vehicle-info').textContent = 
-                    `Vehicle: ${orderData.driverVehicle || 'Assigned'}`;
-            } else {
-                if (driverLocationUnsubscribe) {
-                    driverLocationUnsubscribe();
-                    driverLocationUnsubscribe = null;
-                }
-                document.getElementById('driver-info').classList.remove('active');
-                if (driverMarker) {
-                    driverMarker.remove();
-                    driverMarker = null;
-                }
-            }
-
-            updateDeliveryMarker(orderData);
-
-            if (orderData.status === 'delivered') {
-                sessionStorage.removeItem('currentOrderId');
-            }
-        });
-        
-    
-    // Show chat toggle button
-    document.getElementById('chat-toggle').style.display = 'flex';
-    // Cleanup on page unload
-    window.addEventListener('unload', () => {
-        unsubscribe();
-        if (driverLocationUnsubscribe) {
-            driverLocationUnsubscribe();
-        }
-    });
-    initializeChat(orderId, 'customer');
-
-}
-
-// UI Update Functions
+// Load active order
 function updateOrderUI(orderData, orderId) {
     document.getElementById('order-id').textContent = orderId;
-    document.getElementById('order-time').textContent = 
-        new Date(orderData.timestamp).toLocaleString();
+    
+    // Safely handle the timestamp
+    let displayTime = '';
+    if (orderData.timestamp) {
+        if (orderData.timestamp.toDate) {
+            // Handle Firestore Timestamp
+            displayTime = new Date(orderData.timestamp.toDate()).toLocaleString();
+        } else if (typeof orderData.timestamp === 'string') {
+            // Handle string timestamp
+            displayTime = new Date(orderData.timestamp).toLocaleString();
+        } else if (orderData.timestamp instanceof Date) {
+            // Handle Date object
+            displayTime = orderData.timestamp.toLocaleString();
+        }
+    }
+    document.getElementById('order-time').textContent = displayTime;
+
+    // Update order status based on orderType
+    if (orderData.orderType === 'collection') {
+        updateCollectionStatus(orderData.status);
+    } else {
+        updateDeliveryStatus(orderData.status);
+    }
     
     const itemsList = document.createElement('div');
     itemsList.className = 'order-items';
@@ -1060,15 +962,16 @@ function updateOrderUI(orderData, orderId) {
             <div class="order-total" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #FFD700;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                     <span>Subtotal:</span>
-                    <span>R${orderData.subtotal.toFixed(2)}</span>
+                    <span>R${orderData.subtotal?.toFixed(2) || '0.00'}</span>
                 </div>
+                ${orderData.orderType === 'delivery' ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                     <span>Delivery Fee:</span>
-                    <span>R${orderData.deliveryFee.toFixed(2)}</span>
-                </div>
+                    <span>R${orderData.deliveryFee?.toFixed(2) || '0.00'}</span>
+                </div>` : ''}
                 <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1em;">
                     <span>Total:</span>
-                    <span>R${orderData.total.toFixed(2)}</span>
+                    <span>R${orderData.total?.toFixed(2) || '0.00'}</span>
                 </div>
             </div>
         </div>
@@ -1082,17 +985,369 @@ function updateOrderUI(orderData, orderId) {
     orderTime.parentNode.insertBefore(itemsList, orderTime.nextSibling);
 }
 
-function updateOrderStatus(status) {
+// Update loadOrderData to include the correct statuses for collection orders
+async function loadOrderData(userId) {
+    try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('order-tracking').style.display = 'none';
+        document.getElementById('error-message').style.display = 'none';
+
+        const ordersQuery = await db.collection('orders')
+            .where('userId', '==', userId)
+            .where('status', 'in', ['received', 'confirmed', 'delivering', 'ready', 'prepared'])
+            .orderBy('timestamp', 'desc')
+            .limit(1)
+            .get();
+
+        if (!ordersQuery.empty) {
+            const orderDoc = ordersQuery.docs[0];
+            const orderId = orderDoc.id;
+            sessionStorage.setItem('currentOrderId', orderId);
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('order-tracking').style.display = 'block';
+            
+            return { orderDoc, orderId };
+        } else {
+            document.getElementById('loading').style.display = 'none';
+            showNoOrdersMessage();
+            return null;
+        }
+    } catch (error) {
+        console.error('Error loading order:', error);
+        document.getElementById('loading').style.display = 'none';
+        showError('Failed to load order details');
+        return null;
+    }
+}
+// Setup order tracking
+function setupDriverTracking(orderData) {
+    if (!orderData.driverId) return;
+
+    // Show driver info
+    document.getElementById('driver-info').classList.add('active');
+    document.getElementById('driver-name').textContent = orderData.driverName || 'Driver';
+    document.getElementById('vehicle-info').textContent = 
+        `Vehicle: ${orderData.driverVehicle || 'Assigned'}`;
+
+    // Setup real-time driver location tracking
+    const driverLocationUnsubscribe = db.collection('drivers')
+        .doc(orderData.driverId)
+        .onSnapshot(driverDoc => {
+            if (driverDoc.exists) {
+                const driverData = driverDoc.data();
+                console.log('Driver data:', driverData); // Debug log
+                
+                if (driverData.currentLocation) {
+                    console.log('Updating driver marker:', driverData.currentLocation); // Debug log
+                    updateDriverMarker([
+                        driverData.currentLocation.longitude,
+                        driverData.currentLocation.latitude
+                    ]);
+                }
+            }
+        }, error => {
+            console.error('Driver tracking error:', error);
+        });
+
+    return driverLocationUnsubscribe;
+}
+
+function handleDeliveryOrder(orderData) {
+    // Show map for delivery orders
+    document.querySelector('.map-container').style.display = 'block';
+    
+    // Remove collection info if it exists
+    const collectionInfo = document.querySelector('.collection-info');
+    if (collectionInfo) {
+        collectionInfo.remove();
+    }
+
+    updateDeliveryStatus(orderData.status);
+
+    if (orderData.status === 'delivering' && orderData.driverId) {
+        setupDriverTracking(orderData);
+    } else {
+        if (driverMarker) {
+            driverMarker.remove();
+            driverMarker = null;
+        }
+        document.getElementById('driver-info').classList.remove('active');
+    }
+
+    if (orderData.address) {
+        updateDeliveryMarker(orderData);
+    }
+}
+
+function handleCollectionOrder(orderData) {
+    // Hide delivery-specific elements
+    document.getElementById('driver-info').classList.remove('active');
+    document.querySelector('.map-container').style.display = 'none';
+    
+    // Hide chat elements
+    document.getElementById('chat-container').style.display = 'none';
+    document.getElementById('chat-toggle').style.display = 'none';
+    
+    if (driverMarker) {
+        driverMarker.remove();
+        driverMarker = null;
+    }
+    if (deliveryMarker) {
+        deliveryMarker.remove();
+        deliveryMarker = null;
+    }
+
+    // Add collection information
+    const collectionInfo = `
+        <div class="collection-info" style="padding: 20px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+            <h3 style="font-weight: 600; margin-bottom: 15px;">Collection Information</h3>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-weight: 600; color: #495057; margin-bottom: 8px;">Store Location:</h4>
+                <p>Sanne's Palace</p>
+                <p>D2487 Seshego Zone 4, Near Matlala Road</p>
+                <p>Seshego, Polokwane, 0742</p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-weight: 600; color: #495057; margin-bottom: 8px;">Operating Hours:</h4>
+                <p>Monday - Sunday: 10:00 AM - 10:00 PM</p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-weight: 600; color: #495057; margin-bottom: 8px;">Contact Information:</h4>
+                <p><i class="fas fa-phone"></i> Phone: <a href="tel:+27677586121" style="color: #000; text-decoration: none;">067 758 6121</a></p>
+                <p><i class="fas fa-envelope"></i> Email: <a href="mailto:admin@sanneskota.co.za" style="color: #000; text-decoration: none;">admin@sanneskota.co.za</a></p>
+            </div>
+            
+            <div class="collection-note" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <p style="color: #856404; margin-bottom: 0;">
+                    <i class="fas fa-info-circle"></i> 
+                    Please note: Your order will be kept for up to 1 hour after it's ready. 
+                    Make sure to collect it during this time frame.
+                </p>
+            </div>
+        </div>
+    `;
+
+    // Remove existing collection info if present
+    const existingInfo = document.querySelector('.collection-info');
+    if (existingInfo) {
+        existingInfo.remove();
+    }
+
+    // Insert collection info after order status
+    const orderStatus = document.querySelector('.order-status');
+    orderStatus.insertAdjacentHTML('afterend', collectionInfo);
+
+    // Update status display for collection orders
+    updateCollectionStatus(orderData.status);
+}
+
+
+// Update setupOrderTracking to handle driver tracking
+function setupOrderTracking(orderDoc, orderId) {
+    let driverLocationUnsubscribe = null;
+
+    // Hide chat elements initially
+    document.getElementById('chat-container').style.display = 'none';
+    document.getElementById('chat-toggle').style.display = 'none';
+
+    // Listen for order updates
+    const unsubscribe = db.collection('orders')
+        .doc(orderId)
+        .onSnapshot(async (doc) => {
+            if (!doc.exists) {
+                showError('Order not found');
+                return;
+            }
+
+            const orderData = doc.data();
+            updateOrderUI(orderData, doc.id);
+
+            // Handle different order types
+            if (orderData.orderType === 'collection') {
+                handleCollectionOrder(orderData);
+                // Ensure chat is hidden for collection orders
+                document.getElementById('chat-container').style.display = 'none';
+                document.getElementById('chat-toggle').style.display = 'none';
+            } else {
+                handleDeliveryOrder(orderData);
+                // Show chat toggle for delivery orders
+                document.getElementById('chat-toggle').style.display = 'flex';
+                initializeChat(orderId, 'customer');
+
+                // Setup driver tracking if order is being delivered
+                if (orderData.status === 'delivering' && orderData.driverId) {
+                    if (driverLocationUnsubscribe) {
+                        driverLocationUnsubscribe();
+                    }
+                    driverLocationUnsubscribe = setupDriverTracking(orderData);
+                } else {
+                    if (driverLocationUnsubscribe) {
+                        driverLocationUnsubscribe();
+                        driverLocationUnsubscribe = null;
+                    }
+                }
+            }
+
+            // Show tracking card
+            document.getElementById('order-tracking').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+
+            if (orderData.status === 'delivered' || orderData.status === 'collected') {
+                sessionStorage.removeItem('currentOrderId');
+                if (driverLocationUnsubscribe) {
+                    driverLocationUnsubscribe();
+                }
+                // Hide chat when order is complete
+                document.getElementById('chat-container').style.display = 'none';
+                document.getElementById('chat-toggle').style.display = 'none';
+            }
+        });
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        unsubscribe();
+        if (driverLocationUnsubscribe) {
+            driverLocationUnsubscribe();
+        }
+    });
+}
+
+
+function setupOrderTracking(orderDoc, orderId) {
+    let driverLocationUnsubscribe = null;
+
+    // Hide chat elements initially
+    document.getElementById('chat-container').style.display = 'none';
+    document.getElementById('chat-toggle').style.display = 'none';
+
+    // Listen for order updates
+    const unsubscribe = db.collection('orders')
+        .doc(orderId)
+        .onSnapshot(async (doc) => {
+            if (!doc.exists) {
+                showError('Order not found');
+                return;
+            }
+
+            const orderData = doc.data();
+            updateOrderUI(orderData, doc.id);
+
+            // Handle different order types
+            if (orderData.orderType === 'collection') {
+                handleCollectionOrder(orderData);
+                // Ensure chat is hidden for collection orders
+                document.getElementById('chat-container').style.display = 'none';
+                document.getElementById('chat-toggle').style.display = 'none';
+            } else {
+                handleDeliveryOrder(orderData);
+                // Show chat toggle for delivery orders
+                document.getElementById('chat-toggle').style.display = 'flex';
+                initializeChat(orderId, 'customer');
+
+                // Setup driver tracking if order is being delivered
+                if (orderData.status === 'delivering' && orderData.driverId) {
+                    if (driverLocationUnsubscribe) {
+                        driverLocationUnsubscribe();
+                    }
+                    driverLocationUnsubscribe = setupDriverTracking(orderData);
+                } else {
+                    if (driverLocationUnsubscribe) {
+                        driverLocationUnsubscribe();
+                        driverLocationUnsubscribe = null;
+                    }
+                }
+            }
+
+            // Show tracking card
+            document.getElementById('order-tracking').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+
+            if (orderData.status === 'delivered' || orderData.status === 'collected') {
+                sessionStorage.removeItem('currentOrderId');
+                if (driverLocationUnsubscribe) {
+                    driverLocationUnsubscribe();
+                }
+                // Hide chat when order is complete
+                document.getElementById('chat-container').style.display = 'none';
+                document.getElementById('chat-toggle').style.display = 'none';
+            }
+        });
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        unsubscribe();
+        if (driverLocationUnsubscribe) {
+            driverLocationUnsubscribe();
+        }
+    });
+}
+
+
+
+
+
+
+// Update Collection Status
+function updateCollectionStatus(status) {
     const statusText = document.getElementById('status-text');
     const statusIcon = document.getElementById('status-icon');
     const statusDescription = document.getElementById('status-description');
     
     switch(status) {
+        case 'received':
+            statusText.textContent = 'Order Received';
+            statusIcon.className = 'status-icon status-confirmed';
+            statusIcon.innerHTML = '📝';
+            statusDescription.textContent = 'Your order has been received and will be prepared shortly';
+            break;
         case 'confirmed':
             statusText.textContent = 'Preparing Order';
             statusIcon.className = 'status-icon status-confirmed';
             statusIcon.innerHTML = '👨‍🍳';
-            statusDescription.textContent = 'Your order is being prepared at our kitchen';
+            statusDescription.textContent = 'Your order is being prepared for collection';
+            break;
+        case 'ready':
+            statusText.textContent = 'Ready for Collection';
+            statusIcon.className = 'status-icon status-delivering';
+            statusIcon.innerHTML = '✨';
+            statusDescription.textContent = 'Your order is ready for collection at our store';
+            break;
+        case 'collected':
+            statusText.textContent = 'Collected';
+            statusIcon.className = 'status-icon status-delivered';
+            statusIcon.innerHTML = '✅';
+            statusDescription.textContent = 'Your order has been collected successfully';
+            break;
+        default:
+            statusText.textContent = 'Processing';
+            statusIcon.className = 'status-icon';
+            statusIcon.innerHTML = '⏳';
+            statusDescription.textContent = 'Your order is being processed';
+    }
+}
+
+// Update Delivery Status
+function updateDeliveryStatus(status) {
+    const statusText = document.getElementById('status-text');
+    const statusIcon = document.getElementById('status-icon');
+    const statusDescription = document.getElementById('status-description');
+    
+    switch(status) {
+        case 'received':
+            statusText.textContent = 'Order Received';
+            statusIcon.className = 'status-icon status-confirmed';
+            statusIcon.innerHTML = '📝';
+            statusDescription.textContent = 'Your order has been received';
+            break;
+        case 'confirmed':
+            statusText.textContent = 'Preparing Order';
+            statusIcon.className = 'status-icon status-confirmed';
+            statusIcon.innerHTML = '👨‍🍳';
+            statusDescription.textContent = 'Your order is being prepared for delivery';
             break;
         case 'delivering':
             statusText.textContent = 'On The Way';
@@ -1114,6 +1369,67 @@ function updateOrderStatus(status) {
     }
 }
 
+
+
+// Authentication state observer
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        const orderData = await loadOrderData(user.uid);
+        if (orderData) {
+            setupOrderTracking(orderData.orderDoc, orderData.orderId);
+        }
+    } else {
+        showLoginRequired();
+    }
+});
+
+// Error handlers
+function showError(message) {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24; margin-bottom: 10px;">Error</h3>
+            <p>${message}</p>
+            <p style="margin-top: 10px;">
+                <a href="menu.html" style="color: #721c24; text-decoration: underline;">Return to Menu</a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+}
+
+function showNoOrdersMessage() {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24; margin-bottom: 10px;">No Active Orders</h3>
+            <p>You don't have any orders to track at the moment.</p>
+            <p style="margin-top: 10px;">
+                <a href="menu.html" style="color: #721c24; text-decoration: underline;">Place an Order</a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+}
+
+function showLoginRequired() {
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('error-message').innerHTML = `
+        <div style="text-align: center;">
+            <h3 style="color: #721c24;margin-bottom: 10px;">Login Required</h3>
+            <p>Please log in to track your orders.</p>
+            <p style="margin-top: 10px;">
+                <a href="login.html" style="color: #721c24; text-decoration: underline;">Login Now</a>
+            </p>
+        </div>
+    `;
+    document.getElementById('order-tracking').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+}
+
+// Update map markers
 function updateDeliveryMarker(orderData) {
     if (!map || !orderData.address) return;
 
@@ -1153,8 +1469,10 @@ function updateDeliveryMarker(orderData) {
     });
 }
 
+// Update the updateDriverMarker function
 function updateDriverMarker(location) {
-    if (!map) return;
+    console.log('Updating driver marker with location:', location); // Debug log
+    if (!map || !location) return;
 
     if (driverMarker) {
         driverMarker.remove();
@@ -1186,6 +1504,7 @@ function updateDriverMarker(location) {
         .setPopup(new mapboxgl.Popup().setHTML('<h3>Driver Location</h3><p>Your order is on the way!</p>'))
         .addTo(map);
 
+    // Center the map to include both shop and driver
     const bounds = new mapboxgl.LngLatBounds()
         .extend(location)
         .extend(SHOP_LOCATION);
@@ -1199,65 +1518,168 @@ function updateDriverMarker(location) {
         duration: 1000
     });
 }
-
-// Helper Functions
-function showError(message) {
-    document.getElementById('error-message').style.display = 'block';
-    document.getElementById('error-message').innerHTML = `
-        <div style="text-align: center;">
-            <h3 style="color: #721c24; margin-bottom: 10px;">Error</h3>
-            <p>${message}</p>
-            <p style="margin-top: 10px;">
-                <a href="menu.html" style="color: #721c24; text-decoration: underline;">
-                    Return to Menu
-                </a>
-            </p>
-        </div>
-    `;
-    document.getElementById('order-tracking').style.display = 'none';
+// Chat functions
+async function initializeChat(orderId, role) {
+    currentOrderId = orderId;
+    currentRole = role;
+    let unreadCount = 0;
+    
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+    }
+    
+    chatUnsubscribe = db.collection('orders').doc(orderId)
+        .collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot(snapshot => {
+            const messagesDiv = document.getElementById('chat-messages');
+            const chatContainer = document.getElementById('chat-container');
+            const isVisible = chatContainer.style.display === 'flex';
+            
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const message = change.doc.data();
+                    const messageElem = createMessageElement(message);
+                    messagesDiv.appendChild(messageElem);
+                    
+                    if (!isVisible && message.sender !== currentRole) {
+                        unreadCount++;
+                        updateUnreadCount(unreadCount);
+                    }
+                    
+                    if (isVisible && message.sender !== currentRole && !message.read) {
+                        change.doc.ref.update({ read: true });
+                    }
+                    
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+            });
+        });
 }
 
-function showNoOrdersMessage() {
-    document.getElementById('error-message').style.display = 'block';
-    document.getElementById('error-message').innerHTML = `
-        <div style="text-align: center;">
-            <h3 style="color: #721c24; margin-bottom: 10px;">No Active Orders</h3>
-            <p>You don't have any orders to track at the moment.</p>
-            <p style="margin-top: 10px;">
-                <a href="menu.html" style="color: #721c24; text-decoration: underline;">
-                    Place an Order
-                </a>
-            </p>
-        </div>
-    `;
-    document.getElementById('order-tracking').style.display = 'none';
+function createMessageElement(message) {
+    const div = document.createElement('div');
+    div.className = `message ${message.sender === currentRole ? 'message-sent' : 'message-received'}`;
+    
+    const text = document.createElement('div');
+    text.textContent = message.text;
+    text.style.wordBreak = 'break-word';
+    div.appendChild(text);
+    
+    const time = document.createElement('div');
+    time.className = 'message-time';
+    const timestamp = message.timestamp ? new Date(message.timestamp.toDate()) : new Date();
+    time.textContent = timestamp.toLocaleTimeString([], { 
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    div.appendChild(time);
+    
+    if (message.sender === currentRole) {
+        const status = document.createElement('div');
+        status.className = 'message-status';
+        status.textContent = message.read ? '✓✓' : '✓';
+        div.appendChild(status);
+    }
+    
+    return div;
 }
 
-function showLoginRequired() {
-    document.getElementById('error-message').style.display = 'block';
-    document.getElementById('error-message').innerHTML = `
-        <div style="text-align: center;">
-            <h3 style="color: #721c24;margin-bottom: 10px;">Login Required</h3>
-            <p>Please log in to track your orders.</p>
-            <p style="margin-top: 10px;">
-                <a href="login.html" style="color: #721c24; text-decoration: underline;">
-                    Login Now
-                </a>
-            </p>
-        </div>
-    `;
-    document.getElementById('order-tracking').style.display = 'none';
+function toggleChat() {
+    // Check if this is a collection order
+    if (currentOrderId) {
+        db.collection('orders').doc(currentOrderId).get().then(doc => {
+            if (doc.exists && doc.data().orderType === 'collection') {
+                return; // Don't toggle chat for collection orders
+            }
+            
+            const chatContainer = document.getElementById('chat-container');
+            const chatToggle = document.getElementById('chat-toggle');
+            const isVisible = chatContainer.style.display === 'flex';
+            
+            chatContainer.style.display = isVisible ? 'none' : 'flex';
+            chatToggle.style.display = isVisible ? 'flex' : 'none';
+            
+            if (!isVisible) {
+                const messagesDiv = document.getElementById('chat-messages');
+                const inputField = document.getElementById('message-input');
+                
+                if (currentOrderId) {
+                    db.collection('orders').doc(currentOrderId)
+                        .collection('messages')
+                        .where('read', '==', false)
+                        .where('sender', '!=', currentRole)
+                        .get()
+                        .then(snapshot => {
+                            const batch = db.batch();
+                            snapshot.docs.forEach(doc => {
+                                batch.update(doc.ref, { read: true });
+                            });
+                            return batch.commit();
+                        });
+                }
+                
+                updateUnreadCount(0);
+                
+                if (messagesDiv) {
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+                if (inputField) {
+                    inputField.focus();
+                }
+            }
+        });
+    }
+}
+async function sendMessage() {
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+    const sendButton = document.getElementById('send-button');
+    
+    if (!message || !currentOrderId) return;
+    
+    try {
+        sendButton.disabled = true;
+        input.disabled = true;
+        
+        await db.collection('orders').doc(currentOrderId)
+            .collection('messages')
+            .add({
+                text: message,
+                sender: currentRole,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
+        
+        input.value = '';
+    } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please try again.');
+    } finally {
+        sendButton.disabled = false;
+        input.disabled = false;
+        input.focus();
+    }
 }
 
-// Cart management
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function updateUnreadCount(count) {
+    const badge = document.getElementById('notification-badge');
+    if (badge) {
+        badge.style.display = count > 0 ? 'flex' : 'none';
+        badge.textContent = count;
+    }
+}
 
 // Cleanup function
 function cleanup() {
-    if (driverLocationInterval) {
-        clearInterval(driverLocationInterval);
-        driverLocationInterval = null;
-    }
-
     if (map) {
         map.remove();
         map = null;
@@ -1273,93 +1695,33 @@ function cleanup() {
         deliveryMarker = null;
     }
 
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+        chatUnsubscribe = null;
+    }
+
     sessionStorage.removeItem('currentOrderId');
 }
 
-// Mobile navigation setup
-document.addEventListener('DOMContentLoaded', function() {
-    const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
-    mobileNavItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            mobileNavItems.forEach(navItem => navItem.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-
-    // Check for shared link access
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
-    const sharedOrderId = params.get('orderId');
-
-    if (sharedOrderId) {
-        handleSharedOrder(sharedOrderId);
+    const orderId = params.get('orderId') || sessionStorage.getItem('currentOrderId');
+    
+    if (orderId) {
+        handleSharedOrder(orderId);
     }
 });
 
-// Handle shared order links
-async function handleSharedOrder(orderId) {
-    try {
-        const orderDoc = await db.collection('orders').doc(orderId).get();
-        if (orderDoc.exists) {
-            sessionStorage.setItem('currentOrderId', orderId);
-            const orderData = orderDoc.data();
-            setupOrderTracking(orderDoc, orderId);
-        } else {
-            showError('Order not found');
-        }
-    } catch (error) {
-        console.error('Error loading shared order:', error);
-        showError('Error loading order details');
-    }
-}
+window.addEventListener('unload', cleanup);
 
-// Map error handling
-if (map) {
-    map.on('load', () => {
-        // Optimize map when not visible
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                map.stop();
-            } else {
-                map.start();
-            }
-        });
-    });
-
-    map.on('error', (error) => {
-        console.error('Map error:', error);
-        showError('Error loading map. Please refresh the page.');
-    });
-}
-
-// Global error handling
-window.addEventListener('error', function(event) {
-    console.error('Global error:', event.error);
-    showError('Something went wrong. Please refresh the page.');
-});
-
-// Handle page visibility
-document.addEventListener('visibilitychange', function() {
+document.addEventListener('visibilitychange', () => {
     if (!document.hidden && auth.currentUser) {
-        // Refresh data when page becomes visible
         loadOrderData(auth.currentUser.uid);
     }
 });
 
-// Cleanup on page unload
-window.addEventListener('unload', cleanup);
-
-// Initialize cart count when auth state changes
-auth.onAuthStateChanged(user => {
-    if (user) {
-        updateCartCount();
-    }
-});
-
-// Performance optimization for map tiles
-if (typeof mapboxgl !== 'undefined') {
-    mapboxgl.prewarm();
-}
-    
     </script>
+
 </body>
 </html>

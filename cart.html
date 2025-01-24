@@ -11,7 +11,7 @@
     <link rel="icon" type="image/jpeg" href="head.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Add a class for reduced navbar height */
+       
         .navbar.payment-active {
             padding: 0.3rem !important;
             min-height: 35px !important;
@@ -98,13 +98,20 @@
                 <!-- Cart items will be added here -->
             </div>
             <div class="cart-summary">
+                <div class="delivery-options">
+                    <label>Order Type:</label>
+                    <select id="orderType" class="order-type-select">
+                        <!-- <option value="delivery">Delivery</option> -->
+                        <option value="collection">Collection</option>
+                    </select>
+                </div>
                 <div class="subtotal">
                     <span>Subtotal:</span>
                     <span id="subtotal">R0.00</span>
                 </div>
-                <div class="delivery-fee">
+                <div class="delivery-fee" id="deliveryFeeContainer">
                     <span>Delivery Fee:</span>
-                    <span>R0.00</span>
+                    <span id="deliveryFee">R0.00</span>
                 </div>
                 <div class="total">
                     <span>Total:</span>
@@ -115,28 +122,36 @@
         </div>
     </div>
 
-    
-   <!-- Checkout Modal -->
-<div id="checkoutModal" class="modal">
-    <div class="modal-content">
-        <button class="close-modal" id="closeModal">&times;</button>
-        <h3>Checkout</h3>
-        <form id="checkoutForm">
-            <div class="form-group">
-                <label for="instructions">Delivery Instructions (Optional)</label>
-                <textarea id="instructions"></textarea>
-            </div>
-            <div id="payment-form"></div>
-            <div class="order-summary">
-                <div id="modal-subtotal"></div>
-                <div id="modal-delivery"></div>
-                <div id="modal-total"></div>
-            </div>
-            <div id="payment-error" class="error-message" style="display: none;"></div>
-            <button type="submit" class="btn-place-order">Pay and Place Order</button>
-        </form>
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModal">&times;</button>
+            <h3>Checkout</h3>
+            <form id="checkoutForm">
+                <div class="form-group">
+                    <div id="orderTypeDisplay" class="order-type-info"></div>
+                </div>
+                <div class="form-group delivery-instructions" id="deliveryInstructionsGroup">
+                    <label for="instructions">Delivery Instructions (Optional)</label>
+                    <textarea id="instructions"></textarea>
+                </div>
+                <div class="form-group collection-instructions" id="collectionInstructionsGroup" style="display: none;">
+                    <p>Collection Point: Sanne's Palace Main Branch</p>
+                    <p>Operating Hours: 9:00 AM - 8:00 PM</p>
+                </div>
+                <div id="payment-form"></div>
+                <div class="order-summary">
+                    <div id="modal-subtotal"></div>
+                    <div id="modal-delivery"></div>
+                    <div id="modal-total"></div>
+                </div>
+                <div id="payment-error" class="error-message" style="display: none;"></div>
+                <button type="submit" class="btn-place-order">Pay and Place Order</button>
+            </form>
+        </div>
     </div>
-</div>
+
+
 
 <script src="https://js.paystack.co/v1/inline.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
