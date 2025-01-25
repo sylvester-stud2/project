@@ -83,27 +83,29 @@ async function loadOrders(isInitialLoad = true) {
 
 async function loadFreshOrders(isInitialLoad = true) {
     const user = auth.currentUser;
-    if (!user) return;
-
-    if (unsubscribe) {
-        unsubscribe();
+    if (!user) {
+        console.log("No user found");
+        return;
     }
+
+    console.log("Loading orders for user:", user.uid);
 
     try {
         let query = db.collection('orders')
             .where('userId', '==', user.uid)
-            .where('status', '==', 'delivered')
+            .where('status', 'in', ['delivered', 'collected'])
             .orderBy('timestamp', 'desc')
             .limit(ORDERS_PER_PAGE);
 
-        if (!isInitialLoad && lastVisibleOrder) {
-            query = query.startAfter(lastVisibleOrder);
-        }
-
         unsubscribe = query.onSnapshot((snapshot) => {
-            if (snapshot.empty && isInitialLoad) {
-                document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('ordersContent').innerHTML = '';
+            console.log("Snapshot received:", snapshot.size, "documents");
+            
+            if (snapshot.empty) {
+                console.log("No orders found");
+                if (isInitialLoad) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('ordersContent').innerHTML = '';
+                }
                 return;
             }
 
@@ -111,27 +113,10 @@ async function loadFreshOrders(isInitialLoad = true) {
             snapshot.forEach((doc) => {
                 orders.push({ id: doc.id, ...doc.data() });
             });
-
-            if (orders.length > 0) {
-                lastVisibleOrder = snapshot.docs[snapshot.docs.length - 1];
-                
-                // Update cache with new data
-                if (isInitialLoad) {
-                    const cacheData = {
-                        userId: user.uid,
-                        orders: orders,
-                        timestamp: Date.now()
-                    };
-                    localStorage.setItem('ordersData', JSON.stringify(cacheData));
-                }
-            }
+            
+            console.log("Processed orders:", orders);
 
             displayOrders(orders, isInitialLoad);
-            
-            // Add load more button if there might be more orders
-            if (orders.length === ORDERS_PER_PAGE) {
-                addLoadMoreButton();
-            }
         });
 
     } catch (error) {
@@ -154,10 +139,13 @@ function addLoadMoreButton() {
 }
 
 function displayOrders(orders, isInitialLoad) {
+    console.log("Displaying orders:", orders.length);
+    
     const ordersContent = document.getElementById('ordersContent');
     const emptyState = document.getElementById('emptyState');
 
     if (!orders || orders.length === 0) {
+        console.log("No orders to display");
         if (isInitialLoad) {
             ordersContent.innerHTML = '';
             emptyState.style.display = 'block';
@@ -166,8 +154,8 @@ function displayOrders(orders, isInitialLoad) {
     }
 
     emptyState.style.display = 'none';
+    ordersContent.style.display = 'block'; // Make sure content is visible
     
-    // Use DocumentFragment for better performance
     const fragment = document.createDocumentFragment();
     
     orders.forEach((order) => {
@@ -179,79 +167,109 @@ function displayOrders(orders, isInitialLoad) {
         ordersContent.innerHTML = '';
     }
     ordersContent.appendChild(fragment);
+    console.log("Orders displayed successfully");
 }
 
 function createOrderElement(orderId, order) {
-    const orderCard = document.createElement('div');
-    orderCard.className = 'order-card';
-    
-    // Format timestamp
-    const orderDate = new Date(order.timestamp);
-    const formattedDate = orderDate.toLocaleDateString('en-ZA', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    // Calculate total items
-    const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
-    
-    orderCard.innerHTML = `
-        <div class="order-header">
-            <span class="order-number">Order #${orderId.slice(-6)}</span>
-            <span class="order-status ${order.status}">${order.status}</span>
-        </div>
+    try {
+        console.log("Creating order element for:", order); // Debug log
         
-        <div class="delivery-info">
-            <p><i class="fas fa-map-marker-alt"></i> ${order.address.street}, ${order.address.suburb}</p>
-            <p><i class="fas fa-phone"></i> ${order.phone}</p>
-            ${order.instructions ? `
-                <p><i class="fas fa-info-circle"></i> Special Instructions: ${order.instructions}</p>
-            ` : ''}
-        </div>
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        
+        // Safely handle timestamp - check if it's a Firebase timestamp or string
+        const orderDate = order.timestamp && order.timestamp.toDate ? 
+            order.timestamp.toDate() : 
+            new Date(order.timestamp);
 
-        <div class="order-items">
-            <div class="items-header">
-                <span>Order Details (${totalItems} items)</span>
+        const formattedDate = orderDate.toLocaleDateString('en-ZA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Safely handle values with defaults
+        const totalItems = order.items ? 
+            order.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 
+            0;
+
+        // Add null checks for all object properties
+        const address = order.address || {};
+        const deliveryFee = order.deliveryFee || 0;
+        const subtotal = order.subtotal || 0;
+        const total = order.total || 0;
+        
+        orderCard.innerHTML = `
+            <div class="order-header">
+                <span class="order-number">Order #${orderId.slice(-6)}</span>
+
+                <span class="order-status ${order.status || ''}">${order.status || ''}</span>
             </div>
-            ${order.items.map(item => `
-                <div class="order-item">
-                    <div class="item-details">
-                        <span class="item-quantity">${item.quantity}x</span>
-                        <span class="item-name">${item.name}</span>
-                    </div>
-                    <span class="item-price">R${(item.price * item.quantity).toFixed(2)}</span>
+            
+            ${order.orderType === 'delivery' ? `
+                <div class="delivery-info">
+                    <p><i class="fas fa-map-marker-alt"></i> ${address.street || ''}, ${address.suburb || ''}</p>
+                    <p><i class="fas fa-phone"></i> ${order.phone || ''}</p>
+                    ${order.instructions ? `<p><i class="fas fa-info-circle"></i> ${order.instructions}</p>` : ''}
                 </div>
-                ${item.description ? `
-                    <div class="item-description">${item.description}</div>
+            ` : `
+                <div class="collection-info">
+                    <p><i class="fas fa-store"></i> Collected from store</p>
+                    <p><i class="fas fa-phone"></i> ${order.phone || ''}</p>
+                </div>
+            `}
+
+            <div class="order-items">
+                <div class="items-header">
+                    <span>Order Details (${totalItems} items)</span>
+                </div>
+                ${order.items ? order.items.map(item => `
+                    <div class="order-item">
+                        <div class="item-details">
+                            <span class="item-quantity">${item.quantity || 0}x</span>
+                            <span class="item-name">${item.name || ''}</span>
+                        </div>
+                        <span class="item-price">R${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</span>
+                    </div>
+                    ${item.description ? `
+                        <div class="item-description">${item.description}</div>
+                    ` : ''}
+                `).join('') : ''}
+            </div>
+
+            <div class="order-summary">
+                <div class="summary-item">
+                    <span>Subtotal</span>
+                    <span>R${subtotal.toFixed(2)}</span>
+                </div>
+                ${order.orderType === 'delivery' ? `
+                    <div class="summary-item">
+                        <span>Delivery Fee</span>
+                        <span>R${deliveryFee.toFixed(2)}</span>
+                    </div>
                 ` : ''}
-            `).join('')}
-        </div>
-
-        <div class="order-summary">
-            <div class="summary-item">
-                <span>Subtotal</span>
-                <span>R${order.subtotal.toFixed(2)}</span>
+                <div class="order-total">
+                    <span>Total</span>
+                    <span>R${total.toFixed(2)}</span>
+                </div>
             </div>
-            <div class="summary-item">
-                <span>Delivery Fee</span>
-                <span>R${order.deliveryFee.toFixed(2)}</span>
-            </div>
-            <div class="order-total">
-                <span>Total</span>
-                <span>R${order.total.toFixed(2)}</span>
-            </div>
-        </div>
 
-        <div class="order-date">
-            <i class="fas fa-clock"></i>
-            <small>Ordered on ${formattedDate}</small>
-        </div>
-    `;
+            <div class="order-date">
+                <i class="fas fa-clock"></i>
+                <small>Ordered on ${formattedDate}</small>
+            </div>
+        `;
 
-    return orderCard;
+        return orderCard;
+    } catch (error) {
+        console.error("Error creating order element:", error, order);
+        const errorCard = document.createElement('div');
+        errorCard.className = 'order-card error';
+        errorCard.textContent = 'Error displaying order';
+        return errorCard;
+    }
 }
 
 function showNotification(message, type = 'success') {
