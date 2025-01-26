@@ -265,10 +265,21 @@ function generateReference() {
 
 
 
-
-
-
-
+// Function to check for any active orders
+async function checkActiveOrders(userId) {
+    const db = firebase.firestore();
+    try {
+        const activeOrders = await db.collection('orders')
+            .where('userId', '==', userId)
+            .where('status', 'in', ['received', 'processing', 'preparing', 'ready', 'delivering'])
+            .get();
+        
+        return !activeOrders.empty;
+    } catch (error) {
+        console.error('Error checking active orders:', error);
+        throw error;
+    }
+}
 
 async function handleCheckout(event) {
     event.preventDefault();
@@ -279,6 +290,17 @@ async function handleCheckout(event) {
         submitButton.disabled = true;
         submitButton.textContent = 'Checking requirements...';
         errorElement.style.display = 'none';
+
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+            throw new Error('User not authenticated. Please log in again.');
+        }
+
+        // Check for active orders before proceeding
+        const hasActiveOrder = await checkActiveOrders(userId);
+        if (hasActiveOrder) {
+            throw new Error('You have an active order that needs to be completed before placing a new order. Please wait for your current order to be completed.');
+        }
 
         const orderType = getOrderType();
         if (orderType === 'delivery') {
@@ -291,7 +313,6 @@ async function handleCheckout(event) {
             throw new Error('Cart is empty');
         }
 
-        const userId = localStorage.getItem('userId');
         const db = firebase.firestore();
         const userDoc = await db.collection('users').doc(userId).get();
         const userData = userDoc.data();
@@ -444,16 +465,14 @@ async function processSuccessfulPayment(paymentResult) {
                     province: userData.province,
                     country: userData.country,
                     coordinates: userData.coordinates
-                },
-                status: 'received'
-            } : {
-                status: 'received' 
-            }),
+                }
+            } : {}),
             phone: userData.phone,
             instructions,
             subtotal,
             fee,
             total,
+            status: 'received',
             timestamp: new Date().toISOString(),
             payment: {
                 status: 'completed',
@@ -468,7 +487,22 @@ async function processSuccessfulPayment(paymentResult) {
         localStorage.setItem('latestOrderId', orderRef.id);
         localStorage.removeItem('cart');
         
-        showSuccessMessage(orderRef.id);
+        const modal = document.getElementById('checkoutModal');
+        const modalContent = modal.querySelector('.modal-content');
+        modalContent.innerHTML = `
+            <div class="success-message">
+                <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 3rem; margin-bottom: 1rem;"></i>
+                <h2 style="color: #4CAF50; margin-bottom: 1rem;">Order Placed Successfully!</h2>
+                <p style="margin-bottom: 0.5rem;">Your order has been confirmed and is being processed.</p>
+                <p style="margin-bottom: 1rem;">Order Reference: #${orderRef.id}</p>
+                <p>Redirecting to order tracking...</p>
+            </div>
+        `;
+
+        // Ensure redirection happens after a brief delay
+        setTimeout(() => {
+            window.location.href = 'track.html';
+        }, 3000);
 
     } catch (error) {
         console.error('Error processing payment:', error);
